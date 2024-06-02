@@ -110,6 +110,17 @@ class RedisManager
     }
 
     /**
+     * @param string $name
+     * @param ConnectionConfig $config
+     * @return $this
+     */
+    public function setConnectionConfig(string $name, ConnectionConfig $config): static
+    {
+        $this->config->connections[$name] = $config;
+        return $this;
+    }
+
+    /**
      * @return string
      */
     protected function resolveDefaultConnectionName(): string

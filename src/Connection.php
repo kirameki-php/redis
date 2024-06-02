@@ -361,11 +361,11 @@ class Connection
     /**
      * @link https://redis.io/commands/mset
      * @param iterable<string, mixed> $pairs
-     * @return bool
+     * @return void
      */
-    public function mSet(iterable $pairs): bool
+    public function mSet(iterable $pairs): void
     {
-        return $this->run('mSet', $pairs);
+        $this->run('mSet', $pairs);
     }
 
     /**
