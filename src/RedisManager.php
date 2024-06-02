@@ -12,19 +12,23 @@ use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
 use function array_key_exists;
-use function assert;
 
 class RedisManager
 {
     /**
      * @var array<string, Connection>
      */
-    protected array $connections;
+    protected array $connections = [];
 
     /**
      * @var array<string, Closure(ConnectionConfig): Adapter<ConnectionConfig>>
      */
-    protected array $adapters;
+    protected array $adapters = [];
+
+    /**
+     * @var string
+     */
+    protected readonly string $default;
 
     /**
      * @param EventManager $events
@@ -35,8 +39,7 @@ class RedisManager
         public readonly RedisConfig $config,
     )
     {
-        $this->connections = [];
-        $this->adapters = [];
+        $this->default = $this->resolveDefaultConnectionName();
     }
 
     /**
@@ -53,7 +56,7 @@ class RedisManager
      */
     public function useDefault(): Connection
     {
-        return $this->use($this->getDefaultConnectionName());
+        return $this->use($this->default);
     }
 
     /**
@@ -109,11 +112,19 @@ class RedisManager
     /**
      * @return string
      */
-    public function getDefaultConnectionName(): string
+    protected function resolveDefaultConnectionName(): string
     {
         $default = $this->config->default;
-        assert($default !== null);
-        return $default;
+        if ($default !== null) {
+            return $default;
+        }
+        $connections = $this->config->connections;
+        if (count($connections) === 1) {
+            return array_key_first($connections);
+        }
+        throw new LogicException('No default connection could be resolved', [
+            'config' => $this->config,
+        ]);
     }
 
     /**
