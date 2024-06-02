@@ -5,7 +5,7 @@ namespace Kirameki\Redis\Events;
 use Kirameki\Event\Event;
 use Kirameki\Redis\Connection;
 
-class RedisEvent extends Event
+abstract class RedisEvent extends Event
 {
     /**
      * @param Connection $connection

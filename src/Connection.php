@@ -10,7 +10,7 @@ use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Events\CommandExecuted;
 use Kirameki\Redis\Events\ConnectionEstablished;
 use Kirameki\Redis\Exceptions\CommandException;
-use Kirameki\Redis\Support\SetOptions;
+use Kirameki\Redis\Support\SetOption;
 use Kirameki\Redis\Support\Type;
 use Iterator;
 use LogicException;
@@ -397,12 +397,12 @@ class Connection
      * @link https://redis.io/commands/set
      * @param string $key
      * @param mixed $value
-     * @param SetOptions|array<array-key, scalar>|null $options
+     * @param SetOption|array<array-key, scalar>|null $options
      * @return mixed
      */
-    public function set(string $key, mixed $value, SetOptions|array|null $options = null): mixed
+    public function set(string $key, mixed $value, SetOption|array|null $options = null): mixed
     {
-        $opts = ($options instanceof SetOptions)
+        $opts = ($options instanceof SetOption)
             ? $options->toArray()
             : $options ?? [];
 

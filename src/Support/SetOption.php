@@ -4,7 +4,7 @@ namespace Kirameki\Redis\Support;
 
 use DateTimeInterface;
 
-class SetOptions
+class SetOption
 {
     /**
      * @var float
