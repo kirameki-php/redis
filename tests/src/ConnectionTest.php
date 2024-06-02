@@ -2,11 +2,11 @@
 
 namespace Tests\Kirameki\Redis;
 
+use Kirameki\Core\Testing\TestCase;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Testing\Concerns\UsesRedis;
 use stdClass;
-use Tests\Kirameki\TestCase;
 use Webmozart\Assert\InvalidArgumentException;
 use function array_keys;
 use function mt_rand;

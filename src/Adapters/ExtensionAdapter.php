@@ -16,7 +16,7 @@ use function array_filter;
 /**
  * @extends Adapter<ExtensionConfig>
  */
-class PhpRedisAdapter extends Adapter
+class ExtensionAdapter extends Adapter
 {
     protected ?Redis $client = null;
 

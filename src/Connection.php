@@ -194,7 +194,7 @@ class Connection
         $result = $this->run('client', 'info');
         $map = [];
         foreach (explode(' ', $result) as $item) {
-            [$key, $val] = explode('=', $item);
+            [$key, $val] = explode('=', $item, 2);
             $map[$key] = $val;
         }
         return $map;
