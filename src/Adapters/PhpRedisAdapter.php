@@ -3,7 +3,6 @@
 namespace Kirameki\Redis\Adapters;
 
 use Kirameki\Core\Exceptions\InvalidConfigException;
-use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
@@ -13,7 +12,6 @@ use Override;
 use Redis;
 use RedisException as PhpRedisException;
 use function array_filter;
-use function compact;
 
 /**
  * @extends Adapter<ExtensionConfig>
@@ -114,8 +112,8 @@ class PhpRedisAdapter extends Adapter
                 : $client->connect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds);
 
             $client->setOption(Redis::OPT_PREFIX, $config->prefix);
-            $client->setOption(Redis::OPT_TCP_KEEPALIVE, true);
             $client->setOption(Redis::OPT_SERIALIZER, $config->serializer);
+            $client->setOption(Redis::OPT_TCP_KEEPALIVE, true);
 
             if ($config->username !== null && $config->password !== null) {
                 $credentials = ['user' => $config->username, 'pass' => $config->password];

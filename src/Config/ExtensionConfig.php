@@ -13,7 +13,7 @@ class ExtensionConfig extends ConnectionConfig
         ?string $username = null,
         ?string $password = null,
         bool $persistent = false,
-        ?float $connectionTimeoutSeconds = null,
+        ?float $connectTimeoutSeconds = null,
         ?float $readTimeoutSeconds = null,
         string $prefix = '',
         public ?int $database = null,
@@ -27,7 +27,7 @@ class ExtensionConfig extends ConnectionConfig
             $username,
             $password,
             $persistent,
-            $connectionTimeoutSeconds,
+            $connectTimeoutSeconds,
             $readTimeoutSeconds,
             $prefix,
         );
