@@ -3,22 +3,23 @@
 namespace Kirameki\Redis;
 
 use Closure;
-use Kirameki\Collections\Iterator;
+use Kirameki\Collections\Vec;
 use Kirameki\Event\EventManager;
 use Kirameki\Redis\Adapters\Adapter;
+use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Events\CommandExecuted;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Support\SetOptions;
 use Kirameki\Redis\Support\Type;
-use Kirameki\Support\Str;
+use Iterator;
 use LogicException;
 use Redis;
 use Traversable;
-use Webmozart\Assert\Assert;
 use function count;
 use function explode;
 use function func_get_args;
 use function hrtime;
+use function is_array;
 use function iterator_to_array;
 
 /**
@@ -97,50 +98,17 @@ use function iterator_to_array;
 class Connection
 {
     /**
-     * @param string $name
-     * @param Adapter $adapter
+     * @template TConnectionConfig of ConnectionConfig
+     * @param string $name,
+     * @param Adapter<TConnectionConfig> $adapter
      * @param EventManager $event
      */
     public function __construct(
-        protected string $name,
-        protected Adapter $adapter,
-        protected EventManager $event,
+        public readonly string $name,
+        public readonly Adapter $adapter,
+        protected readonly EventManager $event,
     )
     {
-    }
-
-    /**
-     * @return string
-     */
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    /**
-     * @return Adapter
-     */
-    public function getAdapter(): Adapter
-    {
-        return $this->adapter;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPrefix(): string
-    {
-        return $this->adapter->getPrefix();
-    }
-
-    /**
-     * @param string $prefix
-     * @return $this
-     */
-    public function setPrefix(string $prefix): static
-    {
-        $this->adapter->setPrefix($prefix);
-        return $this;
     }
 
     /**
@@ -192,7 +160,7 @@ class Connection
     /**
      * @param string $command
      * @param array<mixed> $args
-     * @param Closure(Adapter, string, array<int, mixed>): mixed $callback
+     * @param Closure(Adapter<ConnectionConfig>, string, array<int, mixed>): mixed $callback
      * @return mixed
      */
     protected function process(string $command, array $args, Closure $callback): mixed
@@ -200,7 +168,7 @@ class Connection
         $then = hrtime(true);
         $result = $callback($this->adapter, $command, $args);
         $timeMs = (hrtime(true) - $then) * 1_000_000;
-        $this->event->dispatchClass(CommandExecuted::class, $this, $command, $args, $result, $timeMs);
+        $this->event->emit(new CommandExecuted($this, $command, $args, $result, $timeMs));
         return $result;
     }
 
@@ -222,12 +190,12 @@ class Connection
     public function clientInfo(): array
     {
         $result = $this->run('client', 'info');
-        $formatted = [];
+        $map = [];
         foreach (explode(' ', $result) as $item) {
             [$key, $val] = explode('=', $item);
-            $formatted[$key] = Str::infer($val);
+            $map[$key] = $val;
         }
-        return $formatted;
+        return $map;
     }
 
     /**
@@ -273,8 +241,10 @@ class Connection
     }
 
     /**
-     * @param int $per  Suggest number of keys to get per scan.
-     * @return int  Returns the number of keys deleted.
+     * @param int $per
+     * Suggest number of keys to get per scan.
+     * @return int
+     * Returns the number of keys deleted.
      */
     public function flushKeys(int $per = 100_000): int
     {
@@ -286,7 +256,8 @@ class Connection
 
     /**
      * @link https://redis.io/commands/time
-     * @return float  Redis server time in unix timestamp
+     * @return float
+     * Redis server time in unix timestamp
      */
     public function time(): float
     {
@@ -304,7 +275,8 @@ class Connection
      * @link https://redis.io/commands/decrby
      * @param string $key
      * @param int $by
-     * @return int  the decremented value
+     * @return int
+     * The decremented value
      */
     public function decr(string $key, int $by = 1): int
     {
@@ -317,7 +289,8 @@ class Connection
      * @link https://redis.io/commands/decrbyfloat
      * @param string $key
      * @param float $by
-     * @return float  the decremented value
+     * @return float
+     * The decremented value
      */
     public function decrByFloat(string $key, float $by): float
     {
@@ -327,7 +300,8 @@ class Connection
     /**
      * @link https://redis.io/commands/get
      * @param string $key
-     * @return mixed|false  `false` if key does not exist.
+     * @return mixed|false
+     * `false` if key does not exist.
      */
     public function get(string $key): mixed
     {
@@ -339,7 +313,8 @@ class Connection
      * @link https://redis.io/commands/incrby
      * @param string $key
      * @param int $by
-     * @return int  the incremented value
+     * @return int
+     * The incremented value
      */
     public function incr(string $key, int $by = 1): int
     {
@@ -352,7 +327,8 @@ class Connection
      * @link https://redis.io/commands/incrbyfloat
      * @param string $key
      * @param float $by
-     * @return float  the incremented value
+     * @return float
+     * The incremented value
      */
     public function incrByFloat(string $key, float $by): float
     {
@@ -362,11 +338,14 @@ class Connection
     /**
      * @link https://redis.io/commands/mget
      * @param string ...$key
-     * @return array<string, mixed|false>  Returns `[{retrieved_key} => value, ...]`. `false` if key is not found.
+     * @return array<string, mixed|false>
+     * Returns `[{retrieved_key} => value, ...]`. `false` if key is not found.
      */
     public function mGet(string ...$key): array
     {
-        Assert::isNonEmptyList($key);
+        if (count($key) === 0) {
+            return [];
+        }
         $values = $this->run('mGet', $key);
         $result = [];
         $index = 0;
@@ -384,25 +363,28 @@ class Connection
      */
     public function mSet(iterable $pairs): bool
     {
-        Assert::isNonEmptyMap($pairs);
         return $this->run('mSet', $pairs);
     }
 
     /**
      * @link https://redis.io/commands/randomkey
-     * @return string|false  Returns random key existing in server. Returns `false` if no key exists.
+     * @return string|null
+     * Returns random key existing in server. Returns `null` if no key exists.
      */
-    public function randomKey(): string|false
+    public function randomKey(): ?string
     {
-        return $this->run('randomKey');
+        $result = $this->run('randomKey');
+        return $result !== false ? $result : null;
     }
 
     /**
      * @link https://redis.io/commands/rename
      * @param string $srcKey
      * @param string $dstKey
-     * @return bool  `true` in case of success, `false` in case of failure
-     * @throws CommandException  "ERR no such key" is thrown if no key exists.
+     * @return bool
+     * `true` in case of success, `false` in case of failure
+     * @throws CommandException
+     * "ERR no such key" is thrown if no key exists.
      */
     public function rename(string $srcKey, string $dstKey): bool
     {
@@ -413,13 +395,16 @@ class Connection
      * @link https://redis.io/commands/set
      * @param string $key
      * @param mixed $value
-     * @param SetOptions|null $options
+     * @param SetOptions|array<array-key, scalar>|null $options
      * @return mixed
      */
-    public function set(string $key, mixed $value, ?SetOptions $options = null): mixed
+    public function set(string $key, mixed $value, SetOptions|array|null $options = null): mixed
     {
-        $opts = $options?->toArray() ?? [];
-        return $this->run('set', $key, $value, ...$opts);
+        $opts = ($options instanceof SetOptions)
+            ? $options->toArray()
+            : $options ?? [];
+
+        return $this->run('set', $key, $value, $opts);
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------
@@ -429,11 +414,14 @@ class Connection
     /**
      * @link https://redis.io/commands/del
      * @param string ...$key
-     * @return int Returns the number of keys that were removed.
+     * @return int
+     * Returns the number of keys that were removed.
      */
     public function del(string ...$key): int
     {
-        Assert::isNonEmptyList($key);
+        if (count($key) === 0) {
+            return 0;
+        }
         return $this->run('del', ...$key);
     }
 
@@ -444,7 +432,9 @@ class Connection
      */
     public function exists(string ...$key): int
     {
-        Assert::isNonEmptyList($key);
+        if (count($key) === 0) {
+            return 0;
+        }
         return $this->run('exists', ...$key);
     }
 
@@ -478,14 +468,14 @@ class Connection
      * @param string|null $pattern  Patterns to be scanned. Add '*' as suffix to match string. Returns all keys if `null`.
      * @param int $count  Number of elements returned per iteration. This is just a hint and is not guaranteed.
      * @param bool $prefixed  If set to `true`, result will contain the prefix set in the config. (default: `false`)
-     * @return Iterator<int, string>
+     * @return Vec<string>
      */
-    public function scan(?string $pattern = null, int $count = 10_000, bool $prefixed = false): Iterator
+    public function scan(?string $pattern = null, int $count = 10_000, bool $prefixed = false): Vec
     {
         return $this->process(
             'scan',
             func_get_args(),
-            static fn(Adapter $adapter) => new Iterator($adapter->scan($pattern, $count, $prefixed))
+            static fn(Adapter $adapter) => new Vec($adapter->scan($pattern, $count, $prefixed))
         );
     }
 

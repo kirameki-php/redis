@@ -2,10 +2,14 @@
 
 namespace Kirameki\Redis\Adapters;
 
+use Kirameki\Redis\Config\PhpRedisConfig;
 use Redis;
 use function assert;
 
-class RedisAdapter extends Adapter
+/**
+ * @extends Adapter<PhpRedisConfig>
+ */
+class PhpRedisAdapter extends Adapter
 {
     /**
      * @return Redis
@@ -15,11 +19,14 @@ class RedisAdapter extends Adapter
         if ($this->redis === null) {
             $config = $this->config;
             $this->redis = $this->connectDirect(
-                $config->getStringOr('host', default: 'localhost'),
-                $config->getIntOr('port', default: 6379),
-                $config->getFloatOr('timeout', default: 0.0),
-                $config->getBoolOr('persistent', default: false),
+                $config->host,
+                $config->port,
+                $config->persistent,
             );
+
+            if ($config->database !== null) {
+                $this->redis->select($config->database);
+            }
         }
         assert($this->redis instanceof Redis);
         return $this->redis;
@@ -31,12 +38,11 @@ class RedisAdapter extends Adapter
     public function connectToNodes(): array
     {
         $config = $this->config;
-        $host = $config->getStringOr('host', default: 'localhost');
-        $port = $config->getIntOr('port', default: 6379);
-        $timeout = $config->getFloatOr('timeout', default: 0.0);
+        $host = $config->host;
+        $port = $config->port;
 
         return [
-            $this->connectDirect($host, $port, $timeout, false)
+            $this->connectDirect($host, $port, false),
         ];
     }
 }

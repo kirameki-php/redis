@@ -3,17 +3,20 @@
 namespace Kirameki\Redis\Adapters;
 
 use Generator;
-use Kirameki\Collections\Arr;
-use Kirameki\Core\Config;
+use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\Exceptions\RedisException;
 use Redis;
 use RedisCluster;
 use RedisException as PhpRedisException;
+use function array_filter;
 use function strlen;
 use function substr;
 
+/**
+ * @template TConnectionConfig of ConnectionConfig
+ */
 abstract class Adapter
 {
     /**
@@ -22,38 +25,13 @@ abstract class Adapter
     protected ?object $redis;
 
     /**
-     * @param Config $config
+     * @param TConnectionConfig $config
      */
-    public function __construct(protected Config $config)
+    public function __construct(
+        public readonly ConnectionConfig $config,
+    )
     {
         $this->redis = null;
-    }
-
-    /**
-     * @return Config
-     */
-    public function getConfig(): Config
-    {
-        return $this->config;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPrefix(): string
-    {
-        return $this->config->getStringOr('prefix', '');
-    }
-
-    /**
-     * @param string $prefix
-     * @return $this
-     */
-    public function setPrefix(string $prefix): static
-    {
-        $this->config->set('prefix', $prefix);
-        $this->redis?->setOption(Redis::OPT_PREFIX, $prefix);
-        return $this;
     }
 
     /**
@@ -99,37 +77,28 @@ abstract class Adapter
     /**
      * @param string $host
      * @param int $port
-     * @param float $timeout
-     * @param bool $persistent
      * @return Redis
      */
-    protected function connectDirect(string $host, int $port, float $timeout, bool $persistent): Redis
+    protected function connectDirect(string $host, int $port, bool $persistent): Redis
     {
         $redis = new Redis();
         $config = $this->config;
 
         try {
+            $connectTimeoutSeconds = $config->connectTimeoutSeconds ?? 0.0;
+            $readTimeoutSeconds = $config->readTimeoutSeconds ?? 0.0;
+
             $persistent
-                ? $redis->pconnect($host, $port, $timeout)
-                : $redis->connect($host, $port, $timeout);
+                ? $redis->pconnect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds)
+                : $redis->connect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds);
 
-            $prefix = $config->getStringOr('prefix', default: '');
-            $username = $config->getStringOrNull('username');
-            $password = $config->getStringOrNull('password');
-            $database = $config->getIntOrNull('database');
-
-            $redis->setOption(Redis::OPT_PREFIX, $prefix);
+            $redis->setOption(Redis::OPT_PREFIX, $config->prefix);
             $redis->setOption(Redis::OPT_TCP_KEEPALIVE, true);
-            $redis->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX);
-            $redis->setOption(Redis::OPT_SCAN, Redis::SCAN_RETRY);
             $redis->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
 
-            if ($username !== null && $password !== null) {
-                $redis->auth(Arr::compact(['user' => $username, 'pass' => $password]));
-            }
-
-            if ($database !== null) {
-                $redis->select($database);
+            if ($config->username !== null && $config->password !== null) {
+                $credentials = ['user' => $config->username, 'pass' => $config->password];
+                $redis->auth(array_filter($credentials, fn($v) => $v !== null));
             }
         }
         catch (PhpRedisException $e) {
@@ -151,7 +120,7 @@ abstract class Adapter
      */
     public function command(string $name, mixed ...$args): mixed
     {
-        $redis = $this->redis ?? $this->getConnectedClient();
+        $redis = $this->getConnectedClient();
 
         try {
             $result = $redis->$name(...$args);
@@ -192,27 +161,21 @@ abstract class Adapter
      */
     public function scan(string $pattern = null, int $count = 0, bool $prefixed = false): Generator
     {
-        $prefix = $this->getPrefix();
-
         // If the prefix is defined, doing an empty scan will actually call scan with `"MATCH" "{prefix}"`
         // which does not return the expected result. To get the expected result, '*' needs to be appended.
-        if ($pattern === null && $prefix !== '') {
+        if ($pattern === null && $this->config->prefix !== '') {
             $pattern = '*';
         }
 
-        // PhpRedis returns the results WITH the prefix, so we must trim it after retrieval if `$prefixed` is
-        // set to `false`. The prefix length is necessary for the `substr` used later inside the loop.
-        $removablePrefixLength = strlen($prefixed ? '' : $prefix);
-
         foreach ($this->connectToNodes() as $node) {
+            $prefixed
+                ? $node->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX)
+                : $node->setOption(Redis::OPT_SCAN, Redis::SCAN_NOPREFIX);
             $cursor = null;
             do {
                 $keys = $node->scan($cursor, $pattern, $count);
                 if ($keys !== false) {
                     foreach ($keys as $key) {
-                        if ($removablePrefixLength > 0) {
-                            $key = substr($key, $removablePrefixLength);
-                        }
                         yield $key;
                     }
                 }

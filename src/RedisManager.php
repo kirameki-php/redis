@@ -3,49 +3,38 @@
 namespace Kirameki\Redis;
 
 use Closure;
-use Kirameki\Core\Config;
+use Kirameki\Collections\Map;
+use Kirameki\Core\Exceptions\LogicException;
 use Kirameki\Event\EventManager;
 use Kirameki\Redis\Adapters\Adapter;
-use Kirameki\Redis\Adapters\RedisAdapter;
-use Kirameki\Support\Collection;
-use LogicException;
+use Kirameki\Redis\Adapters\PhpRedisAdapter;
+use Kirameki\Redis\Config\ConnectionConfig;
+use Kirameki\Redis\Config\PhpRedisConfig;
+use Kirameki\Redis\Config\RedisConfig;
 use function array_key_exists;
+use function assert;
 
 class RedisManager
 {
-    /**
-     * @var Config
-     */
-    protected Config $config;
-
-    /**
-     * @var EventManager
-     */
-    protected EventManager $events;
-
     /**
      * @var array<string, Connection>
      */
     protected array $connections;
 
     /**
-     * @var array<string, Closure>
+     * @var array<string, Closure(ConnectionConfig): Adapter<ConnectionConfig>>
      */
     protected array $adapters;
 
     /**
-     * @var string
-     */
-    protected string $defaultAdapter = 'redis';
-
-    /**
-     * @param Config $config
      * @param EventManager $events
+     * @param RedisConfig $config
      */
-    public function __construct(Config $config, EventManager $events)
+    public function __construct(
+        protected readonly EventManager $events,
+        public readonly RedisConfig $config,
+    )
     {
-        $this->config = $config;
-        $this->events = $events;
         $this->connections = [];
         $this->adapters = [];
     }
@@ -54,9 +43,36 @@ class RedisManager
      * @param string $name
      * @return Connection
      */
-    public function using(string $name): Connection
+    public function use(string $name): Connection
     {
         return $this->connections[$name] ??= $this->createConnection($name);
+    }
+
+    /**
+     * @return Connection
+     */
+    public function useDefault(): Connection
+    {
+        return $this->use($this->getDefaultConnectionName());
+    }
+
+    /**
+     * @param string $name
+     * @return Connection
+     */
+    protected function createConnection(string $name): Connection
+    {
+        $config = $this->getConfig($name);
+        $resolver = $this->getAdapterResolver($config->getAdapterName());
+        return new Connection($name, $resolver($config), $this->events);
+    }
+
+    /**
+     * @return Map<string, Connection>
+     */
+    public function resolvedConnections(): Map
+    {
+        return new Map($this->connections);
     }
 
     /**
@@ -70,18 +86,39 @@ class RedisManager
     }
 
     /**
-     * @param Connection $connection
      * @return $this
      */
-    public function addConnection(Connection $connection): static
+    public function purgeAll(): static
     {
-        $this->connections[$connection->getName()] = $connection;
+        $this->connections = [];
         return $this;
     }
 
     /**
      * @param string $name
-     * @param Closure(Config): Adapter $deferred
+     * @return ConnectionConfig
+     */
+    public function getConfig(string $name): ConnectionConfig
+    {
+        return $this->config->connections[$name] ?? throw new LogicException("Database: {$name} does not exist", [
+            'name' => $name,
+            'config' => $this->config,
+        ]);
+    }
+
+    /**
+     * @return string
+     */
+    public function getDefaultConnectionName(): string
+    {
+        $default = $this->config->default;
+        assert($default !== null);
+        return $default;
+    }
+
+    /**
+     * @param string $name
+     * @param Closure(ConnectionConfig): Adapter<ConnectionConfig> $deferred
      * @return $this
      */
     public function addAdapter(string $name, Closure $deferred): static
@@ -92,55 +129,24 @@ class RedisManager
 
     /**
      * @param string $name
-     * @return Connection
+     * @return Closure(ConnectionConfig): Adapter<ConnectionConfig>
      */
-    protected function createConnection(string $name): Connection
+    protected function getAdapterResolver(string $name): Closure
     {
-        $config = $this->getConfig($name);
-        $adapterName = $config->getStringOrNull('adapter') ?? $this->defaultAdapter;
-        $adapterResolver = $this->getAdapterResolver($adapterName);
-        $adapter = $adapterResolver($config);
-        return new Connection($name, $adapter, $this->events);
-    }
-
-    /**
-     * @return Collection<string, Connection>
-     */
-    public function resolvedConnections(): Collection
-    {
-        return new Collection($this->connections);
-    }
-
-    /**
-     * @param string $name
-     * @return Config
-     */
-    public function getConfig(string $name): Config
-    {
-        return $this->config->for('connections.'.$name);
-    }
-
-    /**
-     * @param string $adapter
-     * @return Closure(Config): Adapter
-     */
-    protected function getAdapterResolver(string $adapter): Closure
-    {
-        if (!array_key_exists($adapter, $this->adapters)) {
-            $this->addAdapter($adapter, $this->getDefaultAdapterResolver($adapter));
+        if (!array_key_exists($name, $this->adapters)) {
+            $this->addAdapter($name, $this->getDefaultAdapterResolver($name));
         }
-        return $this->adapters[$adapter];
+        return $this->adapters[$name];
     }
 
     /**
      * @param string $name
-     * @return Closure(Config): Adapter
+     * @return Closure(covariant ConnectionConfig): Adapter<ConnectionConfig>
      */
     protected function getDefaultAdapterResolver(string $name): Closure
     {
         return match ($name) {
-            'redis' => static fn(Config $config) => new RedisAdapter($config),
-            'redis-cluster' => static fn(Config $config) => new RedisAdapter($config),
+            'redis' => static fn(PhpRedisConfig $config) => new PhpRedisAdapter($config),
             default => throw new LogicException("Adapter: $name does not exist"),
         };
     }
