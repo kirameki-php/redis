@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="WEB_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" packagePrefix="Kirameki\Redis\" />
+      <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/src" isTestSource="true" packagePrefix="Tests\Kirameki\Redis\" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/kirameki/cli" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/kirameki/collections" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/kirameki/container" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/kirameki/event" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/kirameki/process" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/kirameki/stream" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/psr/container" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/psr/log" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
