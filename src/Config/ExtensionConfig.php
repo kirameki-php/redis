@@ -38,6 +38,6 @@ class ExtensionConfig extends ConnectionConfig
      */
     public function getAdapterName(): string
     {
-        return 'ext-redis';
+        return 'extension';
     }
 }
