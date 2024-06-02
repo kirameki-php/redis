@@ -8,6 +8,7 @@ use Kirameki\Event\EventManager;
 use Kirameki\Redis\Adapters\Adapter;
 use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Events\CommandExecuted;
+use Kirameki\Redis\Events\ConnectionEstablished;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Support\SetOptions;
 use Kirameki\Redis\Support\Type;
@@ -101,12 +102,12 @@ class Connection
      * @template TConnectionConfig of ConnectionConfig
      * @param string $name,
      * @param Adapter<TConnectionConfig> $adapter
-     * @param EventManager $event
+     * @param EventManager $events
      */
     public function __construct(
         public readonly string $name,
         public readonly Adapter $adapter,
-        protected readonly EventManager $event,
+        protected readonly EventManager $events,
     )
     {
     }
@@ -117,6 +118,7 @@ class Connection
     public function connect(): static
     {
         $this->adapter->connect();
+        $this->events->emit(new ConnectionEstablished($this));
         return $this;
     }
 
@@ -168,7 +170,7 @@ class Connection
         $then = hrtime(true);
         $result = $callback($this->adapter, $command, $args);
         $timeMs = (hrtime(true) - $then) * 1_000_000;
-        $this->event->emit(new CommandExecuted($this, $command, $args, $result, $timeMs));
+        $this->events->emit(new CommandExecuted($this, $command, $args, $result, $timeMs));
         return $result;
     }
 

@@ -5,7 +5,7 @@ namespace Kirameki\Redis\Events;
 use Kirameki\Event\Event;
 use Kirameki\Redis\Connection;
 
-class CommandExecuted extends Event
+class CommandExecuted extends RedisEvent
 {
     /**
      * @param Connection $connection
@@ -15,12 +15,13 @@ class CommandExecuted extends Event
      * @param float $execTimeMs
      */
     public function __construct(
-        public readonly Connection $connection,
+        Connection $connection,
         public readonly string $command,
         public readonly array $args,
         public readonly mixed $result,
         public readonly float $execTimeMs,
     )
     {
+        parent::__construct($connection);
     }
 }

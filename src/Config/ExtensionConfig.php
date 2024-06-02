@@ -4,7 +4,7 @@ namespace Kirameki\Redis\Config;
 
 use Redis;
 
-class PhpRedisConfig extends ConnectionConfig
+class ExtensionConfig extends ConnectionConfig
 {
     public function __construct(
         string $host = 'localhost',

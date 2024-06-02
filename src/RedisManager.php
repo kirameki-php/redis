@@ -9,7 +9,7 @@ use Kirameki\Event\EventManager;
 use Kirameki\Redis\Adapters\Adapter;
 use Kirameki\Redis\Adapters\PhpRedisAdapter;
 use Kirameki\Redis\Config\ConnectionConfig;
-use Kirameki\Redis\Config\PhpRedisConfig;
+use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
 use function array_key_exists;
 use function assert;
@@ -146,7 +146,7 @@ class RedisManager
     protected function getDefaultAdapterResolver(string $name): Closure
     {
         return match ($name) {
-            'redis' => static fn(PhpRedisConfig $config) => new PhpRedisAdapter($config),
+            'redis' => static fn(ExtensionConfig $config) => new PhpRedisAdapter($config),
             default => throw new LogicException("Adapter: $name does not exist"),
         };
     }

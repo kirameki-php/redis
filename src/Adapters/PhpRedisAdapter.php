@@ -2,12 +2,12 @@
 
 namespace Kirameki\Redis\Adapters;
 
-use Kirameki\Redis\Config\PhpRedisConfig;
+use Kirameki\Redis\Config\ExtensionConfig;
 use Redis;
 use function assert;
 
 /**
- * @extends Adapter<PhpRedisConfig>
+ * @extends Adapter<ExtensionConfig>
  */
 class PhpRedisAdapter extends Adapter
 {
