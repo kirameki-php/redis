@@ -7,8 +7,9 @@ use Redis;
 class ExtensionConfig extends ConnectionConfig
 {
     public function __construct(
-        string $host = 'localhost',
-        int $port = 6379,
+        ?string $host = null,
+        ?int $port = null,
+        ?string $socket = null,
         ?string $username = null,
         ?string $password = null,
         bool $persistent = false,
@@ -22,6 +23,7 @@ class ExtensionConfig extends ConnectionConfig
         parent::__construct(
             $host,
             $port,
+            $socket,
             $username,
             $password,
             $persistent,
