@@ -18,7 +18,7 @@ class TestCase extends \Kirameki\Core\Testing\TestCase
 
     protected function createManager(): RedisManager
     {
-        return $this->redis ??= new RedisManager(new EventManager(), new RedisConfig());
+        return $this->redis ??= new RedisManager(new EventManager(), new RedisConfig(default: 'main'));
     }
 
     public function createExtConnection(string $name, ?ExtensionConfig $config = null): Connection

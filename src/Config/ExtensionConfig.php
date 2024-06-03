@@ -17,7 +17,7 @@ class ExtensionConfig extends ConnectionConfig
         ?float $readTimeoutSeconds = null,
         string $prefix = '',
         public ?int $database = null,
-        public int $serializer = Redis::SERIALIZER_NONE,
+        public int $serializer = Redis::SERIALIZER_IGBINARY,
     )
     {
         parent::__construct(

@@ -168,7 +168,7 @@ class RedisManager
     protected function getDefaultAdapterResolver(string $name): Closure
     {
         return match ($name) {
-            'redis' => static fn(ExtensionConfig $config) => new ExtensionAdapter($config),
+            'extension' => static fn(ExtensionConfig $config) => new ExtensionAdapter($config),
             default => throw new LogicException("Adapter: $name does not exist"),
         };
     }

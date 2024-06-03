@@ -2,19 +2,31 @@
 
 namespace Tests\Kirameki\Redis;
 
+use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
+use LogicException;
+use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 use stdClass;
 use function array_keys;
 use function mt_rand;
 
 class ConnectionTest extends TestCase
 {
-    public function test_invalid_connection(): void
+    #[WithoutErrorHandler]
+    public function test_use__non_existing_name(): void
     {
+        $this->throwOnError();
         $this->expectException(ConnectionException::class);
-        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for redis-ng failed: Name does not resolve');
-        $this->createExtConnection('main-ng')->exists('a');
+        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for ng failed: Name does not resolve');
+        $this->createExtConnection('ng', new ExtensionConfig('ng'))->exists('a');
+    }
+
+    public function test_use__connect_to_bad_host(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Database: ng does not exist');
+        $this->createManager()->use('ng')->exists('a');
     }
 
     # region CONNECTION ------------------------------------------------------------------------------------------------
@@ -28,13 +40,13 @@ class ConnectionTest extends TestCase
     public function test_ping(): void
     {
         $conn = $this->createExtConnection('main');
-        self::assertTrue($conn->ping());
+        $this->assertTrue($conn->ping());
     }
 
     public function test_select(): void
     {
         $conn = $this->createExtConnection('main');
-        self::assertTrue($conn->select(1));
+        $this->assertTrue($conn->select(1));
         $this->assertSame(1, $conn->clientInfo()['db']);
     }
 
@@ -69,8 +81,8 @@ class ConnectionTest extends TestCase
 
         // check removed
         $result = $conn->mGet(...$keys);
-        self::assertFalse($result['a']);
-        self::assertFalse($result['b']);
+        $this->assertFalse($result['a']);
+        $this->assertFalse($result['b']);
     }
 
     public function test_exists(): void
@@ -108,15 +120,15 @@ class ConnectionTest extends TestCase
         // filtered with wild card
         $this->assertSame(['a1', 'a2', 'a4'], $conn->scan('a*')->sortAsc()->toArray());
 
+        $connAlt = $this->createExtConnection('alt', new ExtensionConfig('redis', prefix: 'alt:'));
+
         // filtered with prefix
-        $conn->setPrefix('conn1:');
-        $conn->mSet(['a5' => 5]);
-        $this->assertSame(['a5'], $conn->scan('a*')->toArray());
-        $this->assertSame(['a5'], $conn->scan()->toArray());
+        $connAlt->mSet(['a5' => 5]);
+        $this->assertSame(['a5'], $connAlt->scan('a*')->toArray());
+        $this->assertSame(['a5'], $connAlt->scan()->toArray());
 
         // filtered with prefix and return prefixed
-        $conn->setPrefix('conn1:');
-        $this->assertSame(['conn1:a5'], $conn->scan('a*', prefixed: true)->toArray());
+        $this->assertSame(['alt:a5'], $connAlt->scan('a*', prefixed: true)->toArray());
     }
 
     # endregion KEY ----------------------------------------------------------------------------------------------------
@@ -134,9 +146,9 @@ class ConnectionTest extends TestCase
     public function test_string_decrByFloat(): void
     {
         $conn = $this->createExtConnection('main');
-        $this->assertSame(-1, $conn->decrByFloat('d', 1));
+        $this->assertSame(-1.0, $conn->decrByFloat('d', 1));
         $this->assertSame(-3.2, $conn->decrByFloat('d', 2.2));
-        $this->assertSame(-1, $conn->decrByFloat('d', -2.2));
+        $this->assertSame(-1.0, $conn->decrByFloat('d', -2.2));
     }
 
     public function test_string_get(): void
@@ -159,9 +171,9 @@ class ConnectionTest extends TestCase
     public function test_string_incrByFloat(): void
     {
         $conn = $this->createExtConnection('main');
-        $this->assertSame(1, $conn->incrByFloat('d', 1));
+        $this->assertSame(1.0, $conn->incrByFloat('d', 1));
         $this->assertSame(3.2, $conn->incrByFloat('d', 2.2));
-        $this->assertSame(1, $conn->incrByFloat('d', -2.2));
+        $this->assertSame(1.0, $conn->incrByFloat('d', -2.2));
     }
 
     public function test_string_mGet(): void
@@ -221,7 +233,7 @@ class ConnectionTest extends TestCase
     {
         $conn = $this->createExtConnection('main');
         $conn->mSet([]);
-        $this->assertSame([], $conn->keys('*'));
+        $this->assertSame([], $conn->scan('*')->all());
     }
 
     public function test_string_randomKey(): void
@@ -236,7 +248,7 @@ class ConnectionTest extends TestCase
     {
         $conn = $this->createExtConnection('main');
         $conn->set('test', 1);
-        self::assertTrue($conn->rename('test', 'renamed'));
+        $this->assertTrue($conn->rename('test', 'renamed'));
     }
 
     public function test_string_rename_key_not_exists(): void
@@ -244,7 +256,7 @@ class ConnectionTest extends TestCase
         $this->expectException(CommandException::class);
         $this->expectExceptionMessage('ERR no such key');
         $conn = $this->createExtConnection('main');
-        self::assertFalse($conn->rename('miss', 'renamed'));
+        $this->assertFalse($conn->rename('miss', 'renamed'));
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------
@@ -275,8 +287,8 @@ class ConnectionTest extends TestCase
         $this->assertSame(2, $conn->lPush('l', 'abc', 1));
         $this->assertSame('abc', $conn->lIndex('l', 1));
         $this->assertSame('abc', $conn->lIndex('l', -1));
-        self::assertFalse($conn->lIndex('l', 2)); // no index found
-        self::assertFalse($conn->lIndex('m', -1)); // no key found
+        $this->assertFalse($conn->lIndex('l', 2)); // no index found
+        $this->assertFalse($conn->lIndex('m', -1)); // no key found
     }
 
     public function test_list_lIndex_key_not_a_list(): void

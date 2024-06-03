@@ -12,15 +12,14 @@ use Kirameki\Redis\Events\ConnectionEstablished;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Support\SetOption;
 use Kirameki\Redis\Support\Type;
-use Iterator;
 use LogicException;
 use Redis;
 use Traversable;
 use function count;
+use function dump;
 use function explode;
 use function func_get_args;
 use function hrtime;
-use function is_array;
 use function iterator_to_array;
 
 /**
@@ -191,13 +190,7 @@ class Connection
      */
     public function clientInfo(): array
     {
-        $result = $this->run('client', 'info');
-        $map = [];
-        foreach (explode(' ', $result) as $item) {
-            [$key, $val] = explode('=', $item, 2);
-            $map[$key] = $val;
-        }
-        return $map;
+        return $this->run('client', 'info');
     }
 
     /**

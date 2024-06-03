@@ -12,6 +12,7 @@ use Override;
 use Redis;
 use RedisException as PhpRedisException;
 use function array_filter;
+use function substr;
 
 /**
  * @extends Adapter<ExtensionConfig>
@@ -168,15 +169,17 @@ class ExtensionAdapter extends Adapter
             $pattern = '*';
         }
 
+        $prefixLength = strlen($this->config->prefix);
+
         try {
             foreach ($this->connectToNodes() as $node) {
-                $prefixed
-                    ? $node->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX)
-                    : $node->setOption(Redis::OPT_SCAN, Redis::SCAN_NOPREFIX);
+                $node->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX);
                 $cursor = null;
                 do {
                     foreach ($node->scan($cursor, $pattern, $count) ?: [] as $key) {
-                        yield $key;
+                        yield $prefixed
+                            ? $key
+                            : substr($key, $prefixLength);
                     }
                 } while ($cursor > 0);
             }
