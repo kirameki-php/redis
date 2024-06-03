@@ -46,10 +46,10 @@ abstract class Adapter
 
     /**
      * @param string $name
-     * @param mixed ...$args
+     * @param list<mixed> $args
      * @return mixed
      */
-    abstract public function command(string $name, mixed ...$args): mixed;
+    abstract public function command(string $name, array $args): mixed;
 
     /**
      * @param string|null $pattern

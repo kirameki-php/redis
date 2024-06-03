@@ -136,7 +136,7 @@ class ExtensionAdapter extends Adapter
      * @inheritDoc
      */
     #[Override]
-    public function command(string $name, mixed ...$args): mixed
+    public function command(string $name, array $args): mixed
     {
         $client = $this->getClient();
 

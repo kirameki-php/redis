@@ -9,12 +9,12 @@ class SetOption
     /**
      * @var float
      */
-    protected float $expireIn;
+    protected float $px;
 
     /**
      * @var float
      */
-    protected float $expireAt;
+    protected float $pxAt;
 
     /**
      * @var bool
@@ -24,7 +24,32 @@ class SetOption
     /**
      * @var bool
      */
-    protected bool $returnOldString;
+    protected bool $get;
+
+    /**
+     * @return self
+     */
+    public static function notAlreadyExist(): self
+    {
+        return new self('NX');
+    }
+
+    /**
+     * @return self
+     */
+    public static function alreadyExist(): self
+    {
+        return new self('XX');
+    }
+
+    /**
+     * @param string $set
+     */
+    public function __construct(
+        protected string $set,
+    )
+    {
+    }
 
     /**
      * @param float $seconds
@@ -32,7 +57,7 @@ class SetOption
      */
     public function expireIn(float $seconds): static
     {
-        $this->expireIn = $seconds;
+        $this->px = $seconds;
         return $this;
     }
 
@@ -42,7 +67,7 @@ class SetOption
      */
     public function expireAt(float|DateTimeInterface $time): static
     {
-        $this->expireAt = ($time instanceof DateTimeInterface)
+        $this->pxAt = ($time instanceof DateTimeInterface)
             ? (float) $time->format('U.u')
             : $time;
         return $this;
@@ -62,9 +87,9 @@ class SetOption
      * @param bool $toggle
      * @return $this
      */
-    public function returnOldString(bool $toggle = true): static
+    public function get(bool $toggle = true): static
     {
-        $this->returnOldString = $toggle;
+        $this->get = $toggle;
         return $this;
     }
 
@@ -74,20 +99,21 @@ class SetOption
     public function toArray(): array
     {
         $options = [];
+        $options[] = $this->set;
 
-        if ($this->expireIn) {
-            $options['PX'] = $this->expireIn * 1000;
+        if ($this->px) {
+            $options['PX'] = $this->px * 1000;
         }
 
-        if ($this->expireAt) {
-            $options['PXAT'] = $this->expireAt * 1000;
+        if ($this->pxAt) {
+            $options['PXAT'] = $this->pxAt * 1000;
         }
 
         if ($this->keepTtl) {
             $options[] = 'KEEPTTL';
         }
 
-        if ($this->returnOldString) {
+        if ($this->get) {
             $options[] = 'GET';
         }
 
