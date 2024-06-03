@@ -9,12 +9,12 @@ class SetOption
     /**
      * @var float
      */
-    protected float $px;
+    protected float $ex;
 
     /**
      * @var float
      */
-    protected float $pxAt;
+    protected float $exAt;
 
     /**
      * @var bool
@@ -46,7 +46,7 @@ class SetOption
      * @param string $set
      */
     public function __construct(
-        protected string $set,
+        protected ?string $set = null,
     )
     {
     }
@@ -57,7 +57,7 @@ class SetOption
      */
     public function expireIn(float $seconds): static
     {
-        $this->px = $seconds;
+        $this->ex = $seconds;
         return $this;
     }
 
@@ -67,7 +67,7 @@ class SetOption
      */
     public function expireAt(float|DateTimeInterface $time): static
     {
-        $this->pxAt = ($time instanceof DateTimeInterface)
+        $this->exAt = ($time instanceof DateTimeInterface)
             ? (float) $time->format('U.u')
             : $time;
         return $this;
@@ -99,14 +99,17 @@ class SetOption
     public function toArray(): array
     {
         $options = [];
-        $options[] = $this->set;
-
-        if ($this->px) {
-            $options['PX'] = $this->px * 1000;
+        
+        if ($this->set !== null) {
+            $options[] = $this->set;
         }
 
-        if ($this->pxAt) {
-            $options['PXAT'] = $this->pxAt * 1000;
+        if ($this->ex) {
+            $options['PX'] = $this->ex * 1000;
+        }
+
+        if ($this->exAt) {
+            $options['PXAT'] = $this->exAt * 1000;
         }
 
         if ($this->keepTtl) {
