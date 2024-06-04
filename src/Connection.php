@@ -21,12 +21,8 @@ use function hrtime;
 use function iterator_to_array;
 
 /**
- * @method int expireTime()
- * @method int pExpireTime()
- *
  * KEYS ----------------------------------------------------------------------------------------------------------------
  * @method array<int, string> keys(string $pattern)
- * @method bool move(string $key, int $db)
  *
  * HASHES --------------------------------------------------------------------------------------------------------------
  * @method mixed hDel(string $key, string $field)
@@ -84,6 +80,8 @@ use function iterator_to_array;
  * - APPEND: does not work well with serialization
  * - BLPOP: waiting for PhpRedis to implement it
  * - BLMPOP: waiting for PhpRedis to implement it
+ * - TIME: doesn't work when using cluster of servers
+ * - MOVE: not supported in cluster mode
  */
 class Connection
 {
@@ -217,16 +215,6 @@ class Connection
     # region GENERIC ---------------------------------------------------------------------------------------------------
 
     /**
-     * @link https://redis.io/docs/commands/perist
-     * @param string $key
-     * @return bool
-     */
-    public function persist(string $key): bool
-    {
-        return $this->run('persist', $key);
-    }
-
-    /**
      * @link https://redis.io/docs/commands/ttl
      * @param string $key
      * @return int|false|null
@@ -263,6 +251,52 @@ class Connection
     }
 
     /**
+     * @link https://redis.io/docs/commands/expiretime
+     * @param string $key
+     * @return int|false|null
+     * Returns the remaining time to live of a key that has a timeout.
+     * Returns `null` if key exists but has no associated expire.
+     * Returns `false` if key does not exist.
+     */
+    public function expireTime(string $key): int|false|null
+    {
+        $result = $this->run('expiretime', $key);
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/pexpiretime
+     * @param string $key
+     * @return int|false|null
+     * Returns the remaining time to live of a key that has a timeout.
+     * Returns `null` if key exists but has no associated expire.
+     * Returns `false` if key does not exist.
+     */
+    public function pExpireTime(string $key): int|false|null
+    {
+        $result = $this->run('pexpiretime', $key);
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/perist
+     * @param string $key
+     * @return bool
+     */
+    public function persist(string $key): bool
+    {
+        return $this->run('persist', $key);
+    }
+
+    /**
      * @link https://redis.io/docs/commands/expire
      * @param string $key
      * @param int $seconds
@@ -281,7 +315,7 @@ class Connection
      * @param string|null $mode
      * @return bool
      */
-    public function pexpire(string $key, int $milliseconds, ?string $mode = null): bool
+    public function pExpire(string $key, int $milliseconds, ?string $mode = null): bool
     {
         return $this->run('pexpire', $key, $milliseconds, $mode);
     }
@@ -305,7 +339,7 @@ class Connection
      * @param string|null $mode
      * @return bool
      */
-    public function pexpireAt(string $key, int $unixTimeMilliseconds, ?string $mode = null): bool
+    public function pExpireAt(string $key, int $unixTimeMilliseconds, ?string $mode = null): bool
     {
         return $this->run('pexpireAt', $key, $unixTimeMilliseconds, $mode);
     }
@@ -316,6 +350,7 @@ class Connection
 
     /**
      * @link https://redis.io/docs/commands/dbsize
+     * TODO support aggregation of multiple servers
      * @return int
      */
     public function dbSize(): int
@@ -335,18 +370,6 @@ class Connection
         return count($keys) > 0
             ? $this->del(...$keys)
             : 0;
-    }
-
-    /**
-     * @link https://redis.io/docs/commands/time
-     * @return float
-     * Redis server time in unix timestamp
-     */
-    public function time(): float
-    {
-        /** @var list<int> $time */
-        $time = $this->run('time');
-        return (float)"$time[0].$time[1]";
     }
 
     # endregion SERVER -------------------------------------------------------------------------------------------------

@@ -10,6 +10,8 @@ use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 use stdClass;
 use function array_keys;
 use function mt_rand;
+use function time;
+use function usleep;
 
 class ConnectionTest extends TestCase
 {
@@ -54,16 +56,6 @@ class ConnectionTest extends TestCase
 
     # region GENERIC ---------------------------------------------------------------------------------------------------
 
-    public function test_generic_persist(): void
-    {
-        $conn = $this->createExtConnection('main');
-        $conn->set('a', 1, ['ex' => 5]);
-        $conn->set('b', 1);
-        $this->assertTrue($conn->persist('a'));
-        $this->assertFalse($conn->persist('b'));
-        $this->assertFalse($conn->persist('c'));
-    }
-
     public function test_generic_ttl(): void
     {
         $conn = $this->createExtConnection('main');
@@ -82,6 +74,36 @@ class ConnectionTest extends TestCase
         $this->assertGreaterThan(1, $conn->pTtl('a'));
         $this->assertNull($conn->pTtl('b'));
         $this->assertFalse($conn->pTtl('c'));
+    }
+
+    public function test_generic_expireTime(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1);
+        $this->assertNull($conn->expireTime('a'));
+        $conn->expire('a', 5);
+        $this->assertGreaterThan(time(), $conn->expireTime('a'));
+        $this->assertFalse($conn->expireTime('b'));
+    }
+
+    public function test_generic_pExpireTime(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1);
+        $this->assertNull($conn->pExpireTime('a'));
+        $conn->pExpire('a', 5);
+        $this->assertGreaterThan(time() * 1000, $conn->pExpireTime('a'));
+        $this->assertFalse($conn->pExpireTime('b'));
+    }
+
+    public function test_generic_persist(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1, ['ex' => 5]);
+        $conn->set('b', 1);
+        $this->assertTrue($conn->persist('a'));
+        $this->assertFalse($conn->persist('b'));
+        $this->assertFalse($conn->persist('c'));
     }
 
     public function test_generic_expire(): void
@@ -127,38 +149,38 @@ class ConnectionTest extends TestCase
     {
         $conn = $this->createExtConnection('main');
         $conn->set('a', 1);
-        $conn->pexpire('a', 5);
+        $conn->pExpire('a', 5);
         $this->assertLessThan(5, $conn->ttl('a'), 'expire with seconds');
 
         $conn->set('b', 1);
-        $conn->pexpire('b', 2, 'nx');
+        $conn->pExpire('b', 2, 'nx');
         $this->assertLessThan(2, $conn->ttl('b'), 'nx on no ttl yet');
-        $conn->pexpire('b', 5, 'nx');
+        $conn->pExpire('b', 5, 'nx');
         $this->assertLessThan(2, $conn->ttl('b'), 'nx on existing ttl');
 
         $conn->set('c', 1);
-        $conn->pexpire('c', 10, 'xx');
+        $conn->pExpire('c', 10, 'xx');
         $this->assertSame(null, $conn->ttl('c'), 'xx on no ttl');
         $conn->set('d', 1);
-        $conn->pexpire('d', 10);
+        $conn->pExpire('d', 10);
         $this->assertLessThan(10, $conn->ttl('d'), 'xx on existing ttl');
 
         $conn->set('e', 1);
-        $conn->pexpire('e', 10, 'gt');
+        $conn->pExpire('e', 10, 'gt');
         $this->assertNull($conn->ttl('e'), 'gt on no ttl');
-        $conn->pexpire('e', 5);
-        $conn->pexpire('e', 10, 'gt');
+        $conn->pExpire('e', 5);
+        $conn->pExpire('e', 10, 'gt');
         $this->assertLessThan(10, $conn->ttl('e'), 'gt on existing ttl');
-        $conn->pexpire('e', 5, 'gt');
+        $conn->pExpire('e', 5, 'gt');
         $this->assertLessThan(10, $conn->ttl('e'), 'gt on existing ttl with smaller expire time');
 
         $conn->set('f', 1);
-        $conn->pexpire('f', 20, 'lt');
+        $conn->pExpire('f', 20, 'lt');
         $this->assertLessThan(20, $conn->ttl('f'), 'lt on no ttl');
-        $conn->pexpire('f', 15);
-        $conn->pexpire('f', 10, 'lt');
+        $conn->pExpire('f', 15);
+        $conn->pExpire('f', 10, 'lt');
         $this->assertLessThan(10, $conn->ttl('f'), 'lt on existing ttl');
-        $conn->pexpire('f', 15, 'lt');
+        $conn->pExpire('f', 15, 'lt');
         $this->assertLessThan(10, $conn->ttl('f'), 'lt on existing ttl with bigger expire time');
     }
 
