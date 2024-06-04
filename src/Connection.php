@@ -21,16 +21,12 @@ use function hrtime;
 use function iterator_to_array;
 
 /**
- * @method bool expire(string $key, int $time)
- * @method bool expireAt(string $key, int $time)
  * @method int expireTime()
+ * @method int pExpireTime()
  *
  * KEYS ----------------------------------------------------------------------------------------------------------------
  * @method array<int, string> keys(string $pattern)
  * @method bool move(string $key, int $db)
- * @method bool pExpire(string $key, int $time)
- * @method bool pExpireAt(string $key, int $time)
- * @method int pExpireTime()
  *
  * HASHES --------------------------------------------------------------------------------------------------------------
  * @method mixed hDel(string $key, string $field)
@@ -264,6 +260,54 @@ class Connection
             -1 => null,
             default => $result,
         };
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/expire
+     * @param string $key
+     * @param int $seconds
+     * @param string|null $mode
+     * @return bool
+     */
+    public function expire(string $key, int $seconds, ?string $mode = null): bool
+    {
+        return $this->run('expire', $key, $seconds, $mode);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/pexpire
+     * @param string $key
+     * @param int $milliseconds
+     * @param string|null $mode
+     * @return bool
+     */
+    public function pexpire(string $key, int $milliseconds, ?string $mode = null): bool
+    {
+        return $this->run('pexpire', $key, $milliseconds, $mode);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/expireat
+     * @param string $key
+     * @param int $unixTimeSeconds
+     * @param string|null $mode
+     * @return bool
+     */
+    public function expireAt(string $key, int $unixTimeSeconds, ?string $mode = null): bool
+    {
+        return $this->run('expireAt', $key, $unixTimeSeconds, $mode);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/pexpireat
+     * @param string $key
+     * @param int $unixTimeMilliseconds
+     * @param string|null $mode
+     * @return bool
+     */
+    public function pexpireAt(string $key, int $unixTimeMilliseconds, ?string $mode = null): bool
+    {
+        return $this->run('pexpireAt', $key, $unixTimeMilliseconds, $mode);
     }
 
     # endregion GENERIC ------------------------------------------------------------------------------------------------

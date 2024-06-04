@@ -52,6 +52,118 @@ class ConnectionTest extends TestCase
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
 
+    # region GENERIC ---------------------------------------------------------------------------------------------------
+
+    public function test_generic_persist(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1, ['ex' => 5]);
+        $conn->set('b', 1);
+        $this->assertTrue($conn->persist('a'));
+        $this->assertFalse($conn->persist('b'));
+        $this->assertFalse($conn->persist('c'));
+    }
+
+    public function test_generic_ttl(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1, ['ex' => 5]);
+        $conn->set('b', 1);
+        $this->assertSame(5, $conn->ttl('a'));
+        $this->assertNull($conn->ttl('b'));
+        $this->assertFalse($conn->ttl('c'));
+    }
+
+    public function test_generic_pTtl(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1, ['px' => 500]);
+        $conn->set('b', 1);
+        $this->assertGreaterThan(1, $conn->pTtl('a'));
+        $this->assertNull($conn->pTtl('b'));
+        $this->assertFalse($conn->pTtl('c'));
+    }
+
+    public function test_generic_expire(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1);
+        $conn->expire('a', 5);
+        $this->assertSame(5, $conn->ttl('a'), 'expire with seconds');
+
+        $conn->set('b', 1);
+        $conn->expire('b', 2, 'nx');
+        $this->assertSame(2, $conn->ttl('b'), 'nx on no ttl yet');
+        $conn->expire('b', 5, 'nx');
+        $this->assertSame(2, $conn->ttl('b'), 'nx on existing ttl');
+
+        $conn->set('c', 1);
+        $conn->expire('c', 10, 'xx');
+        $this->assertSame(null, $conn->ttl('c'), 'xx on no ttl');
+        $conn->set('d', 1);
+        $conn->expire('d', 10);
+        $this->assertSame(10, $conn->ttl('d'), 'xx on existing ttl');
+
+        $conn->set('e', 1);
+        $conn->expire('e', 10, 'gt');
+        $this->assertNull($conn->ttl('e'), 'gt on no ttl');
+        $conn->expire('e', 5);
+        $conn->expire('e', 10, 'gt');
+        $this->assertSame(10, $conn->ttl('e'), 'gt on existing ttl');
+        $conn->expire('e', 5, 'gt');
+        $this->assertSame(10, $conn->ttl('e'), 'gt on existing ttl with smaller expire time');
+
+        $conn->set('f', 1);
+        $conn->expire('f', 20, 'lt');
+        $this->assertSame(20, $conn->ttl('f'), 'lt on no ttl');
+        $conn->expire('f', 15);
+        $conn->expire('f', 10, 'lt');
+        $this->assertSame(10, $conn->ttl('f'), 'lt on existing ttl');
+        $conn->expire('f', 15, 'lt');
+        $this->assertSame(10, $conn->ttl('f'), 'lt on existing ttl with bigger expire time');
+    }
+
+    public function test_generic_pexpire(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1);
+        $conn->pexpire('a', 5);
+        $this->assertLessThan(5, $conn->ttl('a'), 'expire with seconds');
+
+        $conn->set('b', 1);
+        $conn->pexpire('b', 2, 'nx');
+        $this->assertLessThan(2, $conn->ttl('b'), 'nx on no ttl yet');
+        $conn->pexpire('b', 5, 'nx');
+        $this->assertLessThan(2, $conn->ttl('b'), 'nx on existing ttl');
+
+        $conn->set('c', 1);
+        $conn->pexpire('c', 10, 'xx');
+        $this->assertSame(null, $conn->ttl('c'), 'xx on no ttl');
+        $conn->set('d', 1);
+        $conn->pexpire('d', 10);
+        $this->assertLessThan(10, $conn->ttl('d'), 'xx on existing ttl');
+
+        $conn->set('e', 1);
+        $conn->pexpire('e', 10, 'gt');
+        $this->assertNull($conn->ttl('e'), 'gt on no ttl');
+        $conn->pexpire('e', 5);
+        $conn->pexpire('e', 10, 'gt');
+        $this->assertLessThan(10, $conn->ttl('e'), 'gt on existing ttl');
+        $conn->pexpire('e', 5, 'gt');
+        $this->assertLessThan(10, $conn->ttl('e'), 'gt on existing ttl with smaller expire time');
+
+        $conn->set('f', 1);
+        $conn->pexpire('f', 20, 'lt');
+        $this->assertLessThan(20, $conn->ttl('f'), 'lt on no ttl');
+        $conn->pexpire('f', 15);
+        $conn->pexpire('f', 10, 'lt');
+        $this->assertLessThan(10, $conn->ttl('f'), 'lt on existing ttl');
+        $conn->pexpire('f', 15, 'lt');
+        $this->assertLessThan(10, $conn->ttl('f'), 'lt on existing ttl with bigger expire time');
+    }
+
+    # endregion GENERIC ---------------------------------------------------------------------------------------------------
+
     # region SERVER ----------------------------------------------------------------------------------------------------
 
     public function test_server_dbSize(): void

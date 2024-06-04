@@ -29,7 +29,7 @@ class SetOption
     /**
      * @return self
      */
-    public static function notAlreadyExist(): self
+    public static function ifNotExist(): self
     {
         return new self('NX');
     }
@@ -37,7 +37,7 @@ class SetOption
     /**
      * @return self
      */
-    public static function alreadyExist(): self
+    public static function ifExist(): self
     {
         return new self('XX');
     }
@@ -99,7 +99,7 @@ class SetOption
     public function toArray(): array
     {
         $options = [];
-        
+
         if ($this->set !== null) {
             $options[] = $this->set;
         }
