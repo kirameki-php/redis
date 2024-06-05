@@ -30,16 +30,6 @@ class ExtensionAdapter extends Adapter
     }
 
     /**
-     * @return list<Redis>
-     */
-    public function connectToNodes(): array
-    {
-        return [
-            $this->createClient(...$this->getClientArgs()),
-        ];
-    }
-
-    /**
      * @inheritDoc
      */
     #[Override]
@@ -170,19 +160,17 @@ class ExtensionAdapter extends Adapter
         }
 
         $prefixLength = strlen($this->config->prefix);
-
+        $client = $this->getClient();
         try {
-            foreach ($this->connectToNodes() as $node) {
-                $node->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX);
-                $cursor = null;
-                do {
-                    foreach ($node->scan($cursor, $pattern, $count) ?: [] as $key) {
-                        yield $prefixed
-                            ? $key
-                            : substr($key, $prefixLength);
-                    }
-                } while ($cursor > 0);
-            }
+            $client->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX);
+            $cursor = null;
+            do {
+                foreach ($client->scan($cursor, $pattern, $count) ?: [] as $key) {
+                    yield $prefixed
+                        ? $key
+                        : substr($key, $prefixLength);
+                }
+            } while ($cursor > 0);
         }
         catch (PhpRedisException $e) {
             $this->throwAs(CommandException::class, $e);
