@@ -23,9 +23,6 @@ use function iterator_to_array;
 use function strtolower;
 
 /**
- * KEYS ----------------------------------------------------------------------------------------------------------------
- * @method array<int, string> keys(string $pattern)
- *
  * HASHES --------------------------------------------------------------------------------------------------------------
  * @method mixed hDel(string $key, string $field)
  * @method bool hExists(string $key, string $field)
@@ -200,16 +197,6 @@ class Connection
     public function ping(): bool
     {
         return $this->run(__FUNCTION__);
-    }
-
-    /**
-     * @link https://redis.io/docs/commands/select
-     * @param int $index
-     * @return bool
-     */
-    public function select(int $index): bool
-    {
-        return $this->run(__FUNCTION__, $index);
     }
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
