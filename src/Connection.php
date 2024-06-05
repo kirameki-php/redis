@@ -3,6 +3,7 @@
 namespace Kirameki\Redis;
 
 use Closure;
+use Kirameki\Collections\LazyIterator;
 use Kirameki\Collections\Vec;
 use Kirameki\Event\EventManager;
 use Kirameki\Redis\Adapters\Adapter;
@@ -19,6 +20,7 @@ use function count;
 use function func_get_args;
 use function hrtime;
 use function iterator_to_array;
+use function strtolower;
 
 /**
  * KEYS ----------------------------------------------------------------------------------------------------------------
@@ -188,7 +190,7 @@ class Connection
      */
     public function echo(string $message): string
     {
-        return $this->run('echo', $message);
+        return $this->run(__FUNCTION__, $message);
     }
 
     /**
@@ -197,7 +199,7 @@ class Connection
      */
     public function ping(): bool
     {
-        return $this->run('ping');
+        return $this->run(__FUNCTION__);
     }
 
     /**
@@ -207,7 +209,7 @@ class Connection
      */
     public function select(int $index): bool
     {
-        return $this->run('select', $index);
+        return $this->run(__FUNCTION__, $index);
     }
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
@@ -224,7 +226,7 @@ class Connection
      */
     public function ttl(string $key): int|false|null
     {
-        $result = $this->run('ttl', $key);
+        $result = $this->run(__FUNCTION__, $key);
         return match($result) {
             -2 => false,
             -1 => null,
@@ -242,7 +244,7 @@ class Connection
      */
     public function pTtl(string $key): int|false|null
     {
-        $result = $this->run('pTtl', $key);
+        $result = $this->run(__FUNCTION__, $key);
         return match($result) {
             -2 => false,
             -1 => null,
@@ -260,7 +262,7 @@ class Connection
      */
     public function expireTime(string $key): int|false|null
     {
-        $result = $this->run('expiretime', $key);
+        $result = $this->run(strtolower(__FUNCTION__), $key);
         return match($result) {
             -2 => false,
             -1 => null,
@@ -278,7 +280,7 @@ class Connection
      */
     public function pExpireTime(string $key): int|false|null
     {
-        $result = $this->run('pexpiretime', $key);
+        $result = $this->run(strtolower(__FUNCTION__), $key);
         return match($result) {
             -2 => false,
             -1 => null,
@@ -293,7 +295,7 @@ class Connection
      */
     public function persist(string $key): bool
     {
-        return $this->run('persist', $key);
+        return $this->run(__FUNCTION__, $key);
     }
 
     /**
@@ -305,7 +307,7 @@ class Connection
      */
     public function expire(string $key, int $seconds, ?string $mode = null): bool
     {
-        return $this->run('expire', $key, $seconds, $mode);
+        return $this->run(__FUNCTION__, $key, $seconds, $mode);
     }
 
     /**
@@ -329,7 +331,7 @@ class Connection
      */
     public function expireAt(string $key, int $unixTimeSeconds, ?string $mode = null): bool
     {
-        return $this->run('expireAt', $key, $unixTimeSeconds, $mode);
+        return $this->run(__FUNCTION__, $key, $unixTimeSeconds, $mode);
     }
 
     /**
@@ -350,12 +352,11 @@ class Connection
 
     /**
      * @link https://redis.io/docs/commands/dbsize
-     * TODO support aggregation of multiple servers
      * @return int
      */
     public function dbSize(): int
     {
-        return $this->run('dbSize');
+        return $this->process(__FUNCTION__, [], static fn(Adapter $a) => $a->dbSize());
     }
 
     /**
@@ -366,10 +367,12 @@ class Connection
      */
     public function flushKeys(int $per = 100_000): int
     {
-        $keys = $this->scan(null, $per)->toArray();
-        return count($keys) > 0
-            ? $this->del(...$keys)
-            : 0;
+        $count = 0;
+        do {
+            $keys = $this->scan('*', $per)->toArray();
+            $count += $this->del(...$keys);
+        } while (count($keys) !== 0);
+        return $count;
     }
 
     # endregion SERVER -------------------------------------------------------------------------------------------------
@@ -452,7 +455,7 @@ class Connection
         if (count($key) === 0) {
             return [];
         }
-        $values = $this->run('mGet', $key);
+        $values = $this->run(__FUNCTION__, $key);
         $result = [];
         $index = 0;
         foreach ($key as $k) {
@@ -469,7 +472,7 @@ class Connection
      */
     public function mSet(iterable $pairs): void
     {
-        $this->run('mSet', $pairs);
+        $this->run(__FUNCTION__, $pairs);
     }
 
     /**
@@ -479,7 +482,7 @@ class Connection
      */
     public function randomKey(): ?string
     {
-        $result = $this->run('randomKey');
+        $result = $this->run(__FUNCTION__);
         return $result !== false ? $result : null;
     }
 
@@ -510,7 +513,7 @@ class Connection
             ? $options->toArray()
             : $options ?? [];
 
-        return $this->run('set', $key, $value, $opts);
+        return $this->run(__FUNCTION__, $key, $value, $opts);
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------
@@ -528,7 +531,7 @@ class Connection
         if (count($key) === 0) {
             return 0;
         }
-        return $this->run('del', ...$key);
+        return $this->run(__FUNCTION__, ...$key);
     }
 
     /**
@@ -541,7 +544,7 @@ class Connection
         if (count($key) === 0) {
             return 0;
         }
-        return $this->run('exists', ...$key);
+        return $this->run(__FUNCTION__, ...$key);
     }
 
     /**
@@ -551,7 +554,7 @@ class Connection
      */
     public function type(string $key): Type
     {
-        $type = $this->run('type', $key);
+        $type = $this->run(__FUNCTION__, $key);
         return match ($type) {
             Redis::REDIS_NOT_FOUND => Type::None,
             Redis::REDIS_STRING => Type::String,
@@ -571,18 +574,21 @@ class Connection
      * - A given element may be returned multiple times.
      *
      * @link https://redis.io/docs/commands/scan
-     * @param string|null $pattern  Patterns to be scanned. Add '*' as suffix to match string. Returns all keys if `null`.
-     * @param int $count  Number of elements returned per iteration. This is just a hint and is not guaranteed.
-     * @param bool $prefixed  If set to `true`, result will contain the prefix set in the config. (default: `false`)
+     * @param string $pattern
+     * Patterns to be scanned. (default: `*`)
+     * @param int $count
+     * Number of elements returned per iteration. This is just a hint and is not guaranteed. (default: `10_000`)
+     * @param bool $prefixed
+     * If set to `true`, result will contain the prefix set in the config. (default: `false`)
      * @return Vec<string>
      */
-    public function scan(?string $pattern = null, int $count = 10_000, bool $prefixed = false): Vec
+    public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Vec
     {
-        return $this->process(
-            'scan',
-            func_get_args(),
-            static fn(Adapter $adapter) => new Vec($adapter->scan($pattern, $count, $prefixed)),
-        );
+        $args = func_get_args();
+        return $this->process(__FUNCTION__, $args, static function(Adapter $adapter) use ($pattern, $count, $prefixed) {
+            $generator = $adapter->scan($pattern, $count, $prefixed);
+            return new Vec(new LazyIterator($generator));
+        });
     }
 
     # endregion KEY ----------------------------------------------------------------------------------------------------
@@ -602,7 +608,7 @@ class Connection
         }
 
         /** @var array{ 0?: string, 1?: mixed } $result */
-        $result = $this->run('blPop', $keys, $timeout);
+        $result = $this->run(__FUNCTION__, $keys, $timeout);
 
         return (count($result) > 0)
             ? [$result[0] => $result[1]]
@@ -618,7 +624,7 @@ class Connection
      */
     public function lIndex(string $key, int $index): mixed
     {
-        return $this->run('lIndex', $key, $index);
+        return $this->run(__FUNCTION__, $key, $index);
     }
 
     /**
@@ -632,7 +638,7 @@ class Connection
      */
     public function lPush(string $key, mixed ...$value): int
     {
-        return $this->run('lPush', $key, ...$value);
+        return $this->run(__FUNCTION__, $key, ...$value);
     }
 
     /**
@@ -646,7 +652,7 @@ class Connection
      */
     public function rPush(string $key, mixed ...$value): int
     {
-        return $this->run('rPush', $key, ...$value);
+        return $this->run(__FUNCTION__, $key, ...$value);
     }
 
     # endregion LIST ---------------------------------------------------------------------------------------------------

@@ -12,6 +12,8 @@ use Override;
 use Redis;
 use RedisException as PhpRedisException;
 use function array_filter;
+use function array_map;
+use function iterator_to_array;
 use function substr;
 
 /**
@@ -27,6 +29,14 @@ class ExtensionAdapter extends Adapter
     protected function getClient(): Redis
     {
         return $this->client ??= $this->createClient(...$this->getClientArgs());
+    }
+
+    /**
+     * @return Generator<int, Redis>
+     */
+    protected function getClientNodes(): Generator
+    {
+        yield $this->getClient();
     }
 
     /**
@@ -103,6 +113,8 @@ class ExtensionAdapter extends Adapter
                 : $client->connect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds);
 
             $client->setOption(Redis::OPT_PREFIX, $config->prefix);
+            $client->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX);
+            $client->setOption(Redis::OPT_SCAN, Redis::SCAN_RETRY);
             $client->setOption(Redis::OPT_SERIALIZER, $config->serializer);
             $client->setOption(Redis::OPT_TCP_KEEPALIVE, true);
 
@@ -146,31 +158,41 @@ class ExtensionAdapter extends Adapter
     }
 
     /**
-     * @param string|null $pattern
+     * @inheritDoc
+     */
+    public function dbSize(): int
+    {
+        try {
+            $nodes = iterator_to_array($this->getClientNodes());
+            $sizes = array_map(static fn(Redis $n): int => $n->dbSize(), $nodes);
+            return array_sum($sizes);
+        }
+        catch (PhpRedisException $e) {
+            $this->throwAs(CommandException::class, $e);
+        }
+    }
+
+    /**
+     * @param string $pattern
      * @param int $count
      * @param bool $prefixed
      * @return Generator<int, string>
      */
-    public function scan(string $pattern = null, int $count = 0, bool $prefixed = false): Generator
+    public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator
     {
-        // If the prefix is defined, doing an empty scan will actually call scan with `"MATCH" "{prefix}"`
-        // which does not return the expected result. To get the expected result, '*' needs to be appended.
-        if ($pattern === null && $this->config->prefix !== '') {
-            $pattern = '*';
-        }
-
         $prefixLength = strlen($this->config->prefix);
-        $client = $this->getClient();
+
         try {
-            $client->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX);
-            $cursor = null;
-            do {
-                foreach ($client->scan($cursor, $pattern, $count) ?: [] as $key) {
-                    yield $prefixed
-                        ? $key
-                        : substr($key, $prefixLength);
-                }
-            } while ($cursor > 0);
+            foreach ($this->getClientNodes() as $client) {
+                $cursor = null;
+                do {
+                    foreach ($client->scan($cursor, $pattern, $count) ?: [] as $key) {
+                        yield $prefixed
+                            ? $key
+                            : substr($key, $prefixLength);
+                    }
+                } while ($cursor > 0);
+            }
         }
         catch (PhpRedisException $e) {
             $this->throwAs(CommandException::class, $e);

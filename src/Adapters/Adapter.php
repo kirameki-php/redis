@@ -52,10 +52,15 @@ abstract class Adapter
     abstract public function command(string $name, array $args): mixed;
 
     /**
-     * @param string|null $pattern
+     * @return int
+     */
+    abstract public function dbSize(): int;
+
+    /**
+     * @param string $pattern
      * @param int $count
      * @param bool $prefixed
      * @return Generator<int, string>
      */
-    abstract public function scan(string $pattern = null, int $count = 0, bool $prefixed = false): Generator;
+    abstract public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator;
 }

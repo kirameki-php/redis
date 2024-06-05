@@ -3,7 +3,6 @@
 namespace Tests\Kirameki\Redis;
 
 use Kirameki\Event\EventManager;
-use Kirameki\Redis\Adapters\ExtensionAdapter;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
 use Kirameki\Redis\Connection;
