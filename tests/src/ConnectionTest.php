@@ -45,13 +45,6 @@ class ConnectionTest extends TestCase
         $this->assertTrue($conn->ping());
     }
 
-    public function test_select(): void
-    {
-        $conn = $this->createExtConnection('main');
-        $this->assertTrue($conn->select(1));
-        $this->assertSame(1, $conn->clientInfo()['db']);
-    }
-
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
 
     # region GENERIC ---------------------------------------------------------------------------------------------------

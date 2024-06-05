@@ -29,7 +29,6 @@ class TestCase extends \Kirameki\Core\Testing\TestCase
         $this->runAfterTearDown(static function () use ($connection): void {
             if ($connection->isConnected()) {
                 $connection->flushKeys();
-                $connection->select(0);
             }
         });
 
