@@ -2,6 +2,7 @@
 
 namespace Kirameki\Redis\Adapters;
 
+use Closure;
 use Kirameki\Core\Exceptions\InvalidConfigException;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
@@ -13,7 +14,9 @@ use Redis;
 use RedisException as PhpRedisException;
 use function array_filter;
 use function array_map;
+use function array_sum;
 use function iterator_to_array;
+use function strlen;
 use function substr;
 
 /**
@@ -28,7 +31,7 @@ class ExtensionAdapter extends Adapter
      */
     protected function getClient(): Redis
     {
-        return $this->client ??= $this->createClient(...$this->getClientArgs());
+        return $this->client ??= $this->createClient();
     }
 
     /**
@@ -70,16 +73,16 @@ class ExtensionAdapter extends Adapter
     }
 
     /**
-     * @return array{ host: string, port: int, persistent: bool }
+     * @return array{ string, int }
      */
-    protected function getClientArgs(): array
+    protected function getClientConnectInfo(): array
     {
         $config = $this->config;
         $host = $config->host;
         $port = $config->port ?? 6379;
         $socket = $config->socket;
         if ($host === null && $socket === null) {
-            throw new InvalidConfigException('Either host or socket must be defined.');
+            throw new InvalidConfigException('Either host or socket must be provided.');
         }
         if ($host !== null && $socket !== null) {
             throw new InvalidConfigException('Host and socket cannot be used together.');
@@ -88,29 +91,22 @@ class ExtensionAdapter extends Adapter
             $host = $socket;
             $port = -1;
         }
-        return [
-            'host' => $host,
-            'port' => $port,
-            'persistent' => $config->persistent,
-        ];
+        return [$host, $port];
     }
 
     /**
-     * @param string $host
-     * @param int $port
-     * @param bool $persistent
      * @return Redis
      */
-    protected function createClient(string $host, int $port, bool $persistent = false): Redis
+    protected function createClient(): Redis
     {
-        $client = new Redis();
-        $config = $this->config;
-
         try {
+            $client = new Redis();
+            $config = $this->config;
+            [$host, $port] = $this->getClientConnectInfo();
             $connectTimeoutSeconds = $config->connectTimeoutSeconds ?? 0.0;
             $readTimeoutSeconds = $config->readTimeoutSeconds ?? 0.0;
 
-            $persistent
+            $config->persistent
                 ? $client->pconnect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds)
                 : $client->connect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds);
 
@@ -128,12 +124,11 @@ class ExtensionAdapter extends Adapter
             if ($config->database !== null) {
                 $client->select($config->database);
             }
+            return $client;
         }
         catch (PhpRedisException $e) {
             $this->throwAs(ConnectionException::class, $e);
         }
-
-        return $client;
     }
 
     /**
@@ -143,13 +138,7 @@ class ExtensionAdapter extends Adapter
     public function command(string $name, array $args): mixed
     {
         $client = $this->getClient();
-
-        try {
-            $result = $client->$name(...$args);
-        }
-        catch (PhpRedisException $e) {
-            $this->throwAs(CommandException::class, $e);
-        }
+        $result = $this->withCatch(static fn() => $client->$name(...$args));
 
         if ($err = $client->getLastError()) {
             $client->clearLastError();
@@ -164,14 +153,11 @@ class ExtensionAdapter extends Adapter
      */
     public function dbSize(): int
     {
-        try {
+        return $this->withCatch(function(): int {
             $nodes = iterator_to_array($this->getClientNodes());
             $sizes = array_map(static fn(Redis $n): int => $n->dbSize(), $nodes);
             return array_sum($sizes);
-        }
-        catch (PhpRedisException $e) {
-            $this->throwAs(CommandException::class, $e);
-        }
+        });
     }
 
     /**
@@ -182,9 +168,8 @@ class ExtensionAdapter extends Adapter
      */
     public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator
     {
-        $prefixLength = strlen($this->config->prefix);
-
-        try {
+        return $this->withCatch(function() use ($pattern, $count, $prefixed): Generator {
+            $prefixLength = strlen($this->config->prefix);
             foreach ($this->getClientNodes() as $client) {
                 $cursor = null;
                 do {
@@ -195,6 +180,18 @@ class ExtensionAdapter extends Adapter
                     }
                 } while ($cursor > 0);
             }
+        });
+    }
+
+    /**
+     * @template T
+     * @param Closure(): T $callback
+     * @return T
+     */
+    protected function withCatch(Closure $callback): mixed
+    {
+        try {
+            return $callback();
         }
         catch (PhpRedisException $e) {
             $this->throwAs(CommandException::class, $e);

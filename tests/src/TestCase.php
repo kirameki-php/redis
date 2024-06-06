@@ -11,7 +11,7 @@ use Kirameki\Redis\RedisManager;
 /**
  * @mixin TestCase
  */
-class TestCase extends \Kirameki\Core\Testing\TestCase
+abstract class TestCase extends \Kirameki\Core\Testing\TestCase
 {
     protected ?RedisManager $redis = null;
 

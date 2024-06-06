@@ -11,7 +11,7 @@ use function array_keys;
 use function mt_rand;
 use function time;
 
-class ConnectionTest extends TestCase
+final class ConnectionTest extends TestCase
 {
     public function test_persistent_connection(): void
     {

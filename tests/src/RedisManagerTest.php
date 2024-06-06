@@ -9,7 +9,7 @@ use Kirameki\Redis\RedisManager;
 use LogicException;
 use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 
-class RedisManagerTest extends TestCase
+final class RedisManagerTest extends TestCase
 {
     public function test_use__main(): void
     {
