@@ -140,7 +140,7 @@ class RedisManager
         if (count($connections) === 1) {
             return array_key_first($connections);
         }
-        throw new LogicException('No default connection could be resolved', [
+        throw new LogicException('No default connection could be resolved.', [
             'config' => $this->config,
         ]);
     }

@@ -2,7 +2,9 @@
 
 namespace Tests\Kirameki\Redis;
 
+use Kirameki\Event\EventManager;
 use Kirameki\Redis\Config\ExtensionConfig;
+use Kirameki\Redis\Config\RedisConfig;
 use Kirameki\Redis\Connection;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\RedisManager;
@@ -11,6 +13,28 @@ use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 
 final class RedisManagerTest extends TestCase
 {
+    public function test__auto_detect_default(): void
+    {
+        $manager = new RedisManager(new EventManager(), new RedisConfig(
+            connections: [
+                'main' => new ExtensionConfig('redis'),
+            ]
+        ));
+        $this->assertSame('main', $manager->default);
+    }
+
+    public function test__auto_detect_default_fail(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('No default connection could be resolved.');
+        new RedisManager(new EventManager(), new RedisConfig(
+            connections: [
+                'main' => new ExtensionConfig('redis'),
+                'alt' => new ExtensionConfig('redis'),
+            ]
+        ));
+    }
+
     public function test_use__main(): void
     {
         $this->createExtConnection('main');
