@@ -84,8 +84,15 @@ class RedisManager
      */
     public function purge(string $name): static
     {
-        unset($this->connections[$name]);
-        return $this;
+        if (array_key_exists($name, $this->connections)) {
+            unset($this->connections[$name]);
+            return $this;
+        }
+
+        throw new LogicException("Failed to purge connection: \"{$name}\" does not exist", [
+            'name' => $name,
+            'connections' => $this->connections,
+        ]);
     }
 
     /**

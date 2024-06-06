@@ -15,7 +15,6 @@ use Kirameki\Redis\Support\SetOption;
 use Kirameki\Redis\Support\Type;
 use LogicException;
 use Redis;
-use Traversable;
 use function count;
 use function func_get_args;
 use function hrtime;
@@ -178,6 +177,26 @@ class Connection
     public function clientInfo(): array
     {
         return $this->run('client', 'info');
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/client-getname
+     * @return string|null
+     */
+    public function clientGetname(): ?string
+    {
+        $result = $this->run('client', 'getname');
+        return $result !== false ? $result : null;
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/client-setname
+     * @param string $name
+     * @return void
+     */
+    public function clientSetname(string $name): void
+    {
+        $this->run('client', 'setname', $name);
     }
 
     /**
@@ -585,14 +604,12 @@ class Connection
     /**
      * @link https://redis.io/docs/commands/blpop
      * @param iterable<string> $keys
-     * @param int $timeout  If no timeout is set, it will be set to 0 which is infinity.
+     * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
      * @return array<string, mixed>|null  Returns null on timeout
      */
-    public function blPop(iterable $keys, int $timeout = 0): ?array
+    public function blPop(iterable $keys, int|float $timeout = 0): ?array
     {
-        if ($keys instanceof Traversable) {
-            $keys = iterator_to_array($keys);
-        }
+        $keys = iterator_to_array($keys);
 
         /** @var array{ 0?: string, 1?: mixed } $result */
         $result = $this->run(__FUNCTION__, $keys, $timeout);

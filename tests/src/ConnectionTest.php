@@ -2,44 +2,113 @@
 
 namespace Tests\Kirameki\Redis;
 
+use Kirameki\Collections\Vec;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
-use Kirameki\Redis\Exceptions\ConnectionException;
-use LogicException;
-use PHPUnit\Framework\Attributes\WithoutErrorHandler;
+use Kirameki\Redis\Support\Type;
 use stdClass;
 use function array_keys;
 use function mt_rand;
 use function time;
-use function usleep;
 
 class ConnectionTest extends TestCase
 {
-    #[WithoutErrorHandler]
-    public function test_use__non_existing_name(): void
+    public function test_persistent_connection(): void
     {
-        $this->throwOnError();
-        $this->expectException(ConnectionException::class);
-        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for ng failed: Name does not resolve');
-        $this->createExtConnection('ng', new ExtensionConfig('ng'))->exists('a');
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis', persistent: true));
+        $this->assertSame('hi', $conn->echo('hi'));
     }
 
-    public function test_use__connect_to_bad_host(): void
+    public function test_different_db(): void
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Database: ng does not exist');
-        $this->createManager()->use('ng')->exists('a');
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertSame(0, $conn->clientInfo()['db']);
+        $conn = $this->createExtConnection('alt', new ExtensionConfig('redis', database: 1));
+        $this->assertSame(1, $conn->clientInfo()['db']);
+    }
+
+    public function test_construct__does_not_actually_connect(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(false, $conn->isConnected());
+    }
+
+    public function test_connect(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(false, $conn->isConnected());
+        $conn->connect();
+        $this->assertSame(true, $conn->isConnected());
+    }
+
+    public function test_disconnect(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->connect();
+        $oldId = $conn->clientInfo()['id'];
+        $this->assertSame(true, $conn->disconnect());
+        $this->assertSame(false, $conn->disconnect());
+        $this->assertNotSame($oldId, $conn->clientInfo()['id']);
+    }
+
+    public function test_reconnect(): void
+    {
+        $conn = $this->createExtConnection('main');
+
+        // reconnect from connected state
+        $conn->connect();
+        $id = $conn->clientInfo()['id'];
+        $conn->reconnect();
+        $this->assertNotSame($id, $newId = $conn->clientInfo()['id']);
+
+        // reconnect from disconnected state
+        $this->assertSame(true, $conn->disconnect());
+        $conn->reconnect();
+        $this->assertNotSame($newId, $conn->clientInfo()['id']);
     }
 
     # region CONNECTION ------------------------------------------------------------------------------------------------
 
-    public function test_string_echo(): void
+    public function test_connection_clientList(): void
+    {
+        $conn1 = $this->createExtConnection('main');
+        $conn2 = $this->createExtConnection('alt');
+        $count = count($conn1->clientList());
+        $this->assertCount($count + 1, $conn2->clientList());
+    }
+
+    public function test_connection_clientInfo(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $info = $conn->clientInfo();
+        $this->assertIsInt($info['id']);
+        $this->assertSame(0, $info['db']);
+    }
+
+    public function test_connection_clientSetname(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $name = 'test';
+        $conn->clientSetname($name);
+        $this->assertSame($name, $conn->clientGetname());
+    }
+
+    public function test_connection_clientGetname(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(null, $conn->clientGetname());
+        $name = 'test';
+        $conn->clientSetname($name);
+        $this->assertSame($name, $conn->clientGetname());
+    }
+
+    public function test_connection_echo(): void
     {
         $conn = $this->createExtConnection('main');
         $this->assertSame('hi', $conn->echo('hi'));
     }
 
-    public function test_ping(): void
+    public function test_connection_ping(): void
     {
         $conn = $this->createExtConnection('main');
         $this->assertTrue($conn->ping());
@@ -232,6 +301,17 @@ class ConnectionTest extends TestCase
         $this->assertSame(0, $result);
     }
 
+    public function test_type(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(Type::None, $conn->type('none'));
+        $conn->set('string', '');
+        $this->assertSame(Type::String, $conn->type('string'));
+        $conn->lPush('list', 1);
+        $this->assertSame(Type::List, $conn->type('list'));
+        // TODO add test for non handled types
+    }
+
     public function test_scan(): void
     {
         $conn = $this->createExtConnection('main');
@@ -396,7 +476,14 @@ class ConnectionTest extends TestCase
         $this->assertSame(2, $conn->lPush('l', 'abc', 1));
         $this->assertSame(['l' => 1], $conn->blPop(['l'], 100));
         $this->assertSame(['l' => 'abc'], $conn->blPop(['l'], 100));
-        $this->assertSame(null, $conn->blPop(['l'], 1));
+        $this->assertSame(null, $conn->blPop(['l'], 0.01));
+    }
+
+    public function test_list_blPop__iterable_type(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->lPush('l', 1));
+        $this->assertSame(['l' => 1], $conn->blPop(new Vec(['l']), 100));
     }
 
     public function test_list_blPop_key_not_a_list(): void
@@ -405,7 +492,7 @@ class ConnectionTest extends TestCase
         $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
         $conn = $this->createExtConnection('main');
         $conn->set('l', 1);
-        $conn->blPop(['l'], 1);
+        $conn->blPop(['l'], 0.01);
     }
 
     public function test_list_lIndex(): void

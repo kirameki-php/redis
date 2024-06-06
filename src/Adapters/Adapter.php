@@ -4,6 +4,7 @@ namespace Kirameki\Redis\Adapters;
 
 use Generator;
 use Kirameki\Redis\Config\ConnectionConfig;
+use function dump;
 
 /**
  * @template TConnectionConfig of ConnectionConfig
@@ -28,16 +29,6 @@ abstract class Adapter
      * @return bool
      */
     abstract public function disconnect(): bool;
-
-    /**
-     * @return $this
-     */
-    public function reconnect(): static
-    {
-        $this->disconnect();
-        $this->connect();
-        return $this;
-    }
 
     /**
      * @return bool

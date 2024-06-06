@@ -55,7 +55,9 @@ class ExtensionAdapter extends Adapter
     #[Override]
     public function disconnect(): bool
     {
-        return (bool) $this->client?->close();
+        $result = (bool) $this->client?->close();
+        $this->client = null;
+        return $result;
     }
 
     /**
