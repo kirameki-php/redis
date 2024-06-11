@@ -162,12 +162,12 @@ class Connection
     # region CONNECTION ------------------------------------------------------------------------------------------------
 
     /**
-     * @link https://redis.io/docs/commands/client-list
-     * @return list<string>
+     * @link https://redis.io/docs/commands/client-id
+     * @return int
      */
-    public function clientList(): array
+    public function clientId(): int
     {
-        return $this->run('client', 'list');
+        return $this->run('client', 'id');
     }
 
     /**
@@ -177,6 +177,15 @@ class Connection
     public function clientInfo(): array
     {
         return $this->run('client', 'info');
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/client-list
+     * @return list<string>
+     */
+    public function clientList(): array
+    {
+        return $this->run('client', 'list');
     }
 
     /**
@@ -247,42 +256,6 @@ class Connection
             return 0;
         }
         return $this->run(__FUNCTION__, ...$key);
-    }
-
-    /**
-     * @link https://redis.io/docs/commands/ttl
-     * @param string $key
-     * @return int|false|null
-     * Returns the remaining time to live of a key that has a timeout.
-     * Returns `null` if key exists but has no associated expire.
-     * Returns `false` if key does not exist.
-     */
-    public function ttl(string $key): int|false|null
-    {
-        $result = $this->run(__FUNCTION__, $key);
-        return match($result) {
-            -2 => false,
-            -1 => null,
-            default => $result,
-        };
-    }
-
-    /**
-     * @link https://redis.io/docs/commands/pttl
-     * @param string $key
-     * @return int|false|null
-     * Returns the remaining time to live of a key that has a timeout.
-     * Returns `null` if key exists but has no associated expire.
-     * Returns `false` if key does not exist.
-     */
-    public function pTtl(string $key): int|false|null
-    {
-        $result = $this->run(__FUNCTION__, $key);
-        return match($result) {
-            -2 => false,
-            -1 => null,
-            default => $result,
-        };
     }
 
     /**
@@ -440,6 +413,42 @@ class Connection
             $generator = $adapter->scan($pattern, $count, $prefixed);
             return new Vec(new LazyIterator($generator));
         });
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/ttl
+     * @param string $key
+     * @return int|false|null
+     * Returns the remaining time to live of a key that has a timeout.
+     * Returns `null` if key exists but has no associated expire.
+     * Returns `false` if key does not exist.
+     */
+    public function ttl(string $key): int|false|null
+    {
+        $result = $this->run(__FUNCTION__, $key);
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/pttl
+     * @param string $key
+     * @return int|false|null
+     * Returns the remaining time to live of a key that has a timeout.
+     * Returns `null` if key exists but has no associated expire.
+     * Returns `false` if key does not exist.
+     */
+    public function pTtl(string $key): int|false|null
+    {
+        $result = $this->run(__FUNCTION__, $key);
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
     }
 
     /**

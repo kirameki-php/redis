@@ -8,6 +8,7 @@ use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Support\Type;
 use stdClass;
 use function array_keys;
+use function count;
 use function mt_rand;
 use function time;
 
@@ -69,12 +70,13 @@ final class ConnectionTest extends TestCase
 
     # region CONNECTION ------------------------------------------------------------------------------------------------
 
-    public function test_connection_clientList(): void
+    public function test_connection_clientId(): void
     {
-        $conn1 = $this->createExtConnection('main');
-        $conn2 = $this->createExtConnection('alt');
-        $count = count($conn1->clientList());
-        $this->assertCount($count + 1, $conn2->clientList());
+        $conn = $this->createExtConnection('main');
+        $id = $conn->clientId();
+        $this->assertIsInt($conn->clientId());
+        $this->assertSame($id, $conn->clientId());
+        $this->assertNotSame($id, $conn->reconnect()->clientId());
     }
 
     public function test_connection_clientInfo(): void
@@ -83,6 +85,14 @@ final class ConnectionTest extends TestCase
         $info = $conn->clientInfo();
         $this->assertIsInt($info['id']);
         $this->assertSame(0, $info['db']);
+    }
+
+    public function test_connection_clientList(): void
+    {
+        $conn1 = $this->createExtConnection('main');
+        $conn2 = $this->createExtConnection('alt');
+        $count = count($conn1->clientList());
+        $this->assertCount($count + 1, $conn2->clientList());
     }
 
     public function test_connection_clientSetname(): void
