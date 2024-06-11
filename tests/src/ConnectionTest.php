@@ -425,6 +425,15 @@ final class ConnectionTest extends TestCase
         $this->assertSame(false, $conn->get('f'));
     }
 
+    public function test_string_getDel(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertFalse($conn->getDel('d'));
+        $conn->mSet(['d' => 'abc', 'e' => null]);
+        $this->assertSame('abc', $conn->getDel('d'));
+        $this->assertNull($conn->getDel('e'));
+    }
+
     public function test_string_incr(): void
     {
         $conn = $this->createExtConnection('main');

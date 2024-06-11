@@ -553,6 +553,17 @@ class Connection
     }
 
     /**
+     * @link https://redis.io/docs/commands/getdel
+     * @param string $key
+     * @return mixed|false
+     * `false` if key does not exist.
+     */
+    public function getDel(string $key): mixed
+    {
+        return $this->run(__FUNCTION__, $key);
+    }
+
+    /**
      * @link https://redis.io/docs/commands/incr
      * @link https://redis.io/docs/commands/incrby
      * @param string $key
