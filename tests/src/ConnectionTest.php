@@ -501,6 +501,14 @@ final class ConnectionTest extends TestCase
         $this->assertSame([], $conn->scan('*')->all());
     }
 
+    public function test_string_mSetNx(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertTrue($conn->mSetNx(['a' => 1, 'b' => 2]));
+        $this->assertFalse($conn->mSetNx(['b' => 4, 'c' => 3]));
+        $this->assertSame(['a' => 1, 'b' => 2, 'c' => false], $conn->mGet('a', 'b', 'c'));
+    }
+
     # endregion STRING -------------------------------------------------------------------------------------------------
 
     # region LIST ------------------------------------------------------------------------------------------------------

@@ -611,6 +611,16 @@ class Connection
     }
 
     /**
+     * @link https://redis.io/docs/commands/msetnx
+     * @param iterable<string, mixed> $pairs
+     * @return bool
+     */
+    public function mSetNx(iterable $pairs): bool
+    {
+        return $this->run(__FUNCTION__, $pairs);
+    }
+
+    /**
      * @link https://redis.io/docs/commands/set
      * @param string $key
      * @param mixed $value
