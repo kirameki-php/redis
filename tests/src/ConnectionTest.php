@@ -118,24 +118,43 @@ final class ConnectionTest extends TestCase
 
     # region GENERIC ---------------------------------------------------------------------------------------------------
 
-    public function test_generic_ttl(): void
+    public function test_generic_del(): void
     {
         $conn = $this->createExtConnection('main');
-        $conn->set('a', 1, ['ex' => 5]);
-        $conn->set('b', 1);
-        $this->assertSame(5, $conn->ttl('a'));
-        $this->assertNull($conn->ttl('b'));
-        $this->assertFalse($conn->ttl('c'));
+        $data = ['a' => 1, 'b' => 2];
+        $keys = array_keys($data);
+        $conn->mSet($data);
+        $sets = $conn->mGet(...$keys);
+
+        $this->assertSame(1, $sets['a']);
+        $this->assertSame(2, $sets['b']);
+
+        $conn->del(...$keys);
+
+        // check removed
+        $result = $conn->mGet(...$keys);
+        $this->assertFalse($result['a']);
+        $this->assertFalse($result['b']);
     }
 
-    public function test_generic_pTtl(): void
+    public function test_generic_exists(): void
     {
         $conn = $this->createExtConnection('main');
-        $conn->set('a', 1, ['px' => 500]);
-        $conn->set('b', 1);
-        $this->assertGreaterThan(1, $conn->pTtl('a'));
-        $this->assertNull($conn->pTtl('b'));
-        $this->assertFalse($conn->pTtl('c'));
+        $data = ['a' => 1, 'b' => 2, 'c' => false, 'd' => null];
+        $keys = array_keys($data);
+        $conn->mSet($data);
+
+        // mixed result
+        $result = $conn->exists(...$keys, ...['f']);
+        $this->assertSame(4, $result);
+
+        // nothing exists
+        $result = $conn->exists('x', 'y', 'z');
+        $this->assertSame(0, $result);
+
+        // no arg
+        $result = $conn->exists();
+        $this->assertSame(0, $result);
     }
 
     public function test_generic_expireTime(): void
@@ -246,73 +265,49 @@ final class ConnectionTest extends TestCase
         $this->assertLessThan(10, $conn->ttl('f'), 'lt on existing ttl with bigger expire time');
     }
 
-    # endregion GENERIC ---------------------------------------------------------------------------------------------------
-
-    # region SERVER ----------------------------------------------------------------------------------------------------
-
-    public function test_server_dbSize(): void
+    public function test_generic_randomKey(): void
     {
         $conn = $this->createExtConnection('main');
-        $this->assertSame(0, $conn->dbSize());
-        $conn->mSet(['a' => 1, 'b' => 2]);
-        $this->assertSame(2, $conn->dbSize());
+        $this->assertSame(null, $conn->randomKey());
+        $conn->set('test', 1);
+        $this->assertSame('test', $conn->randomKey());
     }
 
-    # endregion SERVER -------------------------------------------------------------------------------------------------
-
-    # region KEY -------------------------------------------------------------------------------------------------------
-
-    public function test_del(): void
+    public function test_generic_rename(): void
     {
         $conn = $this->createExtConnection('main');
-        $data = ['a' => 1, 'b' => 2];
-        $keys = array_keys($data);
-        $conn->mSet($data);
-        $sets = $conn->mGet(...$keys);
-
-        $this->assertSame(1, $sets['a']);
-        $this->assertSame(2, $sets['b']);
-
-        $conn->del(...$keys);
-
-        // check removed
-        $result = $conn->mGet(...$keys);
-        $this->assertFalse($result['a']);
-        $this->assertFalse($result['b']);
+        $conn->set('test', 1);
+        $this->assertTrue($conn->rename('test', 'renamed'));
     }
 
-    public function test_exists(): void
+    public function test_generic_rename_key_not_exists(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR no such key');
+        $conn = $this->createExtConnection('main');
+        $this->assertFalse($conn->rename('miss', 'renamed'));
+    }
+
+    public function test_generic_renameNx(): void
     {
         $conn = $this->createExtConnection('main');
-        $data = ['a' => 1, 'b' => 2, 'c' => false, 'd' => null];
-        $keys = array_keys($data);
-        $conn->mSet($data);
-
-        // mixed result
-        $result = $conn->exists(...$keys, ...['f']);
-        $this->assertSame(4, $result);
-
-        // nothing exists
-        $result = $conn->exists('x', 'y', 'z');
-        $this->assertSame(0, $result);
-
-        // no arg
-        $result = $conn->exists();
-        $this->assertSame(0, $result);
+        $conn->set('test', 1);
+        $conn->set('abc', 2);
+        $this->assertTrue($conn->renameNx('test', 'renamed'));
+        $this->assertFalse($conn->renameNx('renamed', 'abc'));
+        $this->assertSame(1, $conn->get('renamed'));
+        $this->assertSame(2, $conn->get('abc'));
     }
 
-    public function test_type(): void
+    public function test_generic_renameNx_key_not_exists(): void
     {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR no such key');
         $conn = $this->createExtConnection('main');
-        $this->assertSame(Type::None, $conn->type('none'));
-        $conn->set('string', '');
-        $this->assertSame(Type::String, $conn->type('string'));
-        $conn->lPush('list', 1);
-        $this->assertSame(Type::List, $conn->type('list'));
-        // TODO add test for non handled types
+        $this->assertFalse($conn->renameNx('miss', 'renamed'));
     }
 
-    public function test_scan(): void
+    public function test_generic_scan(): void
     {
         $conn = $this->createExtConnection('main');
         $data = ['a1' => 1, 'a2' => 2, '_a3' => false, 'a4' => null];
@@ -338,7 +333,60 @@ final class ConnectionTest extends TestCase
         $this->assertSame(['alt:a5'], $connAlt->scan('a*', prefixed: true)->toArray());
     }
 
-    # endregion KEY ----------------------------------------------------------------------------------------------------
+    public function test_generic_ttl(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1, ['ex' => 5]);
+        $conn->set('b', 1);
+        $this->assertSame(5, $conn->ttl('a'));
+        $this->assertNull($conn->ttl('b'));
+        $this->assertFalse($conn->ttl('c'));
+    }
+
+    public function test_generic_pTtl(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1, ['px' => 500]);
+        $conn->set('b', 1);
+        $this->assertGreaterThan(1, $conn->pTtl('a'));
+        $this->assertNull($conn->pTtl('b'));
+        $this->assertFalse($conn->pTtl('c'));
+    }
+
+    public function test_generic_type(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(Type::None, $conn->type('none'));
+        $conn->set('string', '');
+        $this->assertSame(Type::String, $conn->type('string'));
+        $conn->lPush('list', 1);
+        $this->assertSame(Type::List, $conn->type('list'));
+        // TODO add test for non handled types
+    }
+
+    public function test_unlink(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $data = ['a' => 1, 'b' => 2, 'c' => 3];
+        $conn->mSet($data);
+        $this->assertSame(2, $conn->unlink('a', 'b', 'x', 'y', 'z'));
+        $this->assertSame(0, $conn->unlink('a', 'b'));
+        $this->assertSame(1, $conn->unlink('c', 'd'));
+    }
+
+    # endregion GENERIC ---------------------------------------------------------------------------------------------------
+
+    # region SERVER ----------------------------------------------------------------------------------------------------
+
+    public function test_server_dbSize(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(0, $conn->dbSize());
+        $conn->mSet(['a' => 1, 'b' => 2]);
+        $this->assertSame(2, $conn->dbSize());
+    }
+
+    # endregion SERVER -------------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------
 
@@ -441,29 +489,6 @@ final class ConnectionTest extends TestCase
         $conn = $this->createExtConnection('main');
         $conn->mSet([]);
         $this->assertSame([], $conn->scan('*')->all());
-    }
-
-    public function test_string_randomKey(): void
-    {
-        $conn = $this->createExtConnection('main');
-        $this->assertSame(null, $conn->randomKey());
-        $conn->set('test', 1);
-        $this->assertSame('test', $conn->randomKey());
-    }
-
-    public function test_string_rename(): void
-    {
-        $conn = $this->createExtConnection('main');
-        $conn->set('test', 1);
-        $this->assertTrue($conn->rename('test', 'renamed'));
-    }
-
-    public function test_string_rename_key_not_exists(): void
-    {
-        $this->expectException(CommandException::class);
-        $this->expectExceptionMessage('ERR no such key');
-        $conn = $this->createExtConnection('main');
-        $this->assertFalse($conn->rename('miss', 'renamed'));
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------

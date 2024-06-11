@@ -223,6 +223,33 @@ class Connection
     # region GENERIC ---------------------------------------------------------------------------------------------------
 
     /**
+     * @link https://redis.io/docs/commands/del
+     * @param string ...$key
+     * @return int
+     * Returns the number of keys that were removed.
+     */
+    public function del(string ...$key): int
+    {
+        if (count($key) === 0) {
+            return 0;
+        }
+        return $this->run(__FUNCTION__, ...$key);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/exists
+     * @param string ...$key
+     * @return int
+     */
+    public function exists(string ...$key): int
+    {
+        if (count($key) === 0) {
+            return 0;
+        }
+        return $this->run(__FUNCTION__, ...$key);
+    }
+
+    /**
      * @link https://redis.io/docs/commands/ttl
      * @param string $key
      * @return int|false|null
@@ -352,6 +379,99 @@ class Connection
         return $this->run('pexpireAt', $key, $unixTimeMilliseconds, $mode);
     }
 
+    /**
+     * @link https://redis.io/docs/commands/randomkey
+     * @return string|null
+     * Returns random key existing in server. Returns `null` if no key exists.
+     */
+    public function randomKey(): ?string
+    {
+        $result = $this->run(__FUNCTION__);
+        return $result !== false ? $result : null;
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/rename
+     * @param string $srcKey
+     * @param string $dstKey
+     * @return bool
+     * `true` in case of success, `false` in case of failure
+     * @throws CommandException
+     * "ERR no such key" is thrown if no key exists.
+     */
+    public function rename(string $srcKey, string $dstKey): bool
+    {
+        return $this->run(__FUNCTION__, $srcKey, $dstKey);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/renamenx
+     * @param string $srcKey
+     * @param string $dstKey
+     * @return bool
+     * `true` in case of success, `false` in case of failure
+     * @throws CommandException
+     * "ERR no such key" is thrown if no key exists.
+     */
+    public function renameNx(string $srcKey, string $dstKey): bool
+    {
+        return $this->run(__FUNCTION__, $srcKey, $dstKey);
+    }
+
+    /**
+     *
+     * Will iterate through the set of keys that match `$pattern` or all keys if no pattern is given.
+     * Scan has the following limitations
+     * - A given element may be returned multiple times.
+     *
+     * @link https://redis.io/docs/commands/scan
+     * @param string $pattern
+     * Patterns to be scanned. (default: `*`)
+     * @param int $count
+     * Number of elements returned per iteration. This is just a hint and is not guaranteed. (default: `10_000`)
+     * @param bool $prefixed
+     * If set to `true`, result will contain the prefix set in the config. (default: `false`)
+     * @return Vec<string>
+     */
+    public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Vec
+    {
+        $args = func_get_args();
+        return $this->process(__FUNCTION__, $args, static function(Adapter $adapter) use ($pattern, $count, $prefixed) {
+            $generator = $adapter->scan($pattern, $count, $prefixed);
+            return new Vec(new LazyIterator($generator));
+        });
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/type
+     * @param string $key
+     * @return Type
+     */
+    public function type(string $key): Type
+    {
+        $type = $this->run(__FUNCTION__, $key);
+        return match ($type) {
+            Redis::REDIS_NOT_FOUND => Type::None,
+            Redis::REDIS_STRING => Type::String,
+            Redis::REDIS_LIST => Type::List,
+            Redis::REDIS_SET => Type::Set,
+            Redis::REDIS_ZSET => Type::ZSet,
+            Redis::REDIS_HASH => Type::Hash,
+            Redis::REDIS_STREAM => Type::Stream,
+            default => throw new LogicException("Unknown Type: $type"),
+        };
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/unlink
+     * @param string ...$key
+     * @return int
+     */
+    public function unlink(string ...$key): int
+    {
+        return $this->run(__FUNCTION__, ...$key);
+    }
+
     # endregion GENERIC ------------------------------------------------------------------------------------------------
 
     # region SERVER ----------------------------------------------------------------------------------------------------
@@ -396,8 +516,8 @@ class Connection
     public function decr(string $key, int $by = 1): int
     {
         return $by === 1
-            ? $this->run('decr', $key)
-            : $this->run('decrBy', $key, $by);
+            ? $this->run(__FUNCTION__, $key)
+            : $this->run(__FUNCTION__ . 'By', $key, $by);
     }
 
     /**
@@ -420,7 +540,7 @@ class Connection
      */
     public function get(string $key): mixed
     {
-        return $this->run('get', $key);
+        return $this->run(__FUNCTION__, $key);
     }
 
     /**
@@ -434,8 +554,8 @@ class Connection
     public function incr(string $key, int $by = 1): int
     {
         return $by === 1
-            ? $this->run('incr', $key)
-            : $this->run('incrBy', $key, $by);
+            ? $this->run(__FUNCTION__, $key)
+            : $this->run(__FUNCTION__ . 'By', $key, $by);
     }
 
     /**
@@ -447,7 +567,7 @@ class Connection
      */
     public function incrByFloat(string $key, float $by): float
     {
-        return $this->run('incrByFloat', $key, $by);
+        return $this->run(__FUNCTION__, $key, $by);
     }
 
     /**
@@ -482,31 +602,6 @@ class Connection
     }
 
     /**
-     * @link https://redis.io/docs/commands/randomkey
-     * @return string|null
-     * Returns random key existing in server. Returns `null` if no key exists.
-     */
-    public function randomKey(): ?string
-    {
-        $result = $this->run(__FUNCTION__);
-        return $result !== false ? $result : null;
-    }
-
-    /**
-     * @link https://redis.io/docs/commands/rename
-     * @param string $srcKey
-     * @param string $dstKey
-     * @return bool
-     * `true` in case of success, `false` in case of failure
-     * @throws CommandException
-     * "ERR no such key" is thrown if no key exists.
-     */
-    public function rename(string $srcKey, string $dstKey): bool
-    {
-        return $this->run('rename', $srcKey, $dstKey);
-    }
-
-    /**
      * @link https://redis.io/docs/commands/set
      * @param string $key
      * @param mixed $value
@@ -523,81 +618,6 @@ class Connection
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------
-
-    # region KEY -------------------------------------------------------------------------------------------------------
-
-    /**
-     * @link https://redis.io/docs/commands/del
-     * @param string ...$key
-     * @return int
-     * Returns the number of keys that were removed.
-     */
-    public function del(string ...$key): int
-    {
-        if (count($key) === 0) {
-            return 0;
-        }
-        return $this->run(__FUNCTION__, ...$key);
-    }
-
-    /**
-     * @link https://redis.io/docs/commands/exists
-     * @param string ...$key
-     * @return int
-     */
-    public function exists(string ...$key): int
-    {
-        if (count($key) === 0) {
-            return 0;
-        }
-        return $this->run(__FUNCTION__, ...$key);
-    }
-
-    /**
-     * @link https://redis.io/docs/commands/type
-     * @param string $key
-     * @return Type
-     */
-    public function type(string $key): Type
-    {
-        $type = $this->run(__FUNCTION__, $key);
-        return match ($type) {
-            Redis::REDIS_NOT_FOUND => Type::None,
-            Redis::REDIS_STRING => Type::String,
-            Redis::REDIS_LIST => Type::List,
-            Redis::REDIS_SET => Type::Set,
-            Redis::REDIS_ZSET => Type::ZSet,
-            Redis::REDIS_HASH => Type::Hash,
-            Redis::REDIS_STREAM => Type::Stream,
-            default => throw new LogicException("Unknown Type: $type"),
-        };
-    }
-
-    /**
-     *
-     * Will iterate through the set of keys that match `$pattern` or all keys if no pattern is given.
-     * Scan has the following limitations
-     * - A given element may be returned multiple times.
-     *
-     * @link https://redis.io/docs/commands/scan
-     * @param string $pattern
-     * Patterns to be scanned. (default: `*`)
-     * @param int $count
-     * Number of elements returned per iteration. This is just a hint and is not guaranteed. (default: `10_000`)
-     * @param bool $prefixed
-     * If set to `true`, result will contain the prefix set in the config. (default: `false`)
-     * @return Vec<string>
-     */
-    public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Vec
-    {
-        $args = func_get_args();
-        return $this->process(__FUNCTION__, $args, static function(Adapter $adapter) use ($pattern, $count, $prefixed) {
-            $generator = $adapter->scan($pattern, $count, $prefixed);
-            return new Vec(new LazyIterator($generator));
-        });
-    }
-
-    # endregion KEY ----------------------------------------------------------------------------------------------------
 
     # region LIST ------------------------------------------------------------------------------------------------------
 
