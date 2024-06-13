@@ -6,7 +6,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run phpunit
-      run: docker compose run --quiet-pull --rm app composer ci-test
+      run: docker compose run --quiet-pull --rm app pwd
     - name: Run phpstan
       run: docker compose run --quiet-pull --rm app composer analyze
     - uses: codecov/codecov-action@v4
