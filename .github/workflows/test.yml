@@ -5,8 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Prepare vendor
+      run: docker compose run --quiet-pull --rm app composer install
     - name: Run phpunit
-      run: docker compose run --quiet-pull --rm app pwd
+      run: docker compose run --quiet-pull --rm app composer ci-test
     - name: Run phpstan
       run: docker compose run --quiet-pull --rm app composer analyze
     - uses: codecov/codecov-action@v4
