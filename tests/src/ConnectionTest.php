@@ -2,10 +2,13 @@
 
 namespace Tests\Kirameki\Redis;
 
+use Kirameki\Collections\Utils\Arr;
 use Kirameki\Collections\Vec;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
+use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\Support\Type;
+use Redis;
 use stdClass;
 use function array_keys;
 use function count;
@@ -14,18 +17,38 @@ use function time;
 
 final class ConnectionTest extends TestCase
 {
-    public function test_persistent_connection(): void
+    public function test_connection__with_persistence(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis', persistent: true));
         $this->assertSame('hi', $conn->echo('hi'));
     }
 
-    public function test_different_db(): void
+    public function test_connection__on_different_db(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
         $this->assertSame(0, $conn->clientInfo()['db']);
         $conn = $this->createExtConnection('alt', new ExtensionConfig('redis', database: 1));
         $this->assertSame(1, $conn->clientInfo()['db']);
+    }
+
+    public function test_connection__non_existing_host(): void
+    {
+        $this->expectException(ConnectionException::class);
+        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for none failed: Name does not resolve');
+        $conn = $this->createExtConnection('main', new ExtensionConfig('none'));
+        $conn->echo('hi');
+    }
+
+    public function test_connection__readTimeout(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('read error on connection to redis:6379');
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis', readTimeoutSeconds: 0.00001));
+        try {
+            $conn->echo('hi');
+        } finally {
+            $conn->disconnect();
+        }
     }
 
     public function test_construct__does_not_actually_connect(): void
@@ -85,6 +108,15 @@ final class ConnectionTest extends TestCase
         $info = $conn->clientInfo();
         $this->assertIsInt($info['id']);
         $this->assertSame(0, $info['db']);
+    }
+
+    public function test_connection_clientKill(): void
+    {
+        $conn1 = $this->createExtConnection('main');
+        $conn2 = $this->createExtConnection('alt');
+        $id1 = $conn1->clientId();
+        $data = Arr::first($conn2->clientList(), fn(array $client): bool => $client['id'] === $id1);
+        $this->assertSame(true, $conn2->clientKill($data['addr']));
     }
 
     public function test_connection_clientList(): void
@@ -343,6 +375,40 @@ final class ConnectionTest extends TestCase
         $this->assertSame(['alt:a5'], $connAlt->scan('a*', prefixed: true)->toArray());
     }
 
+    public function test_generic_set_serialized(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $patterns = [
+            'null' => null,
+            'int' => 1,
+            'float' => 1.1,
+            'true' => true,
+            'false' => false,
+            'string' => 'test',
+        ];
+        foreach ($patterns as $key => $value) {
+            $this->assertTrue($conn->set($key, $value));
+            $this->assertSame($value, $conn->get($key));
+        }
+    }
+
+    public function test_generic_set_no_serialize(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis', serializer: Redis::SERIALIZER_NONE));
+        $patterns = [
+            ['null', null, ''],
+            ['int', 1, '1'],
+            ['float', 1.1, '1.1'],
+            ['true', true, '1'],
+            ['false', false, ''],
+            ['string', 't', 't'],
+        ];
+        foreach ($patterns as [$key, $value, $expected]) {
+            $this->assertTrue($conn->set($key, $value));
+            $this->assertSame($expected, $conn->get($key));
+        }
+    }
+
     public function test_generic_ttl(): void
     {
         $conn = $this->createExtConnection('main');
@@ -408,12 +474,30 @@ final class ConnectionTest extends TestCase
         $this->assertSame(-1, $conn->decr('d', -2));
     }
 
+    public function test_string_decr__on_serialized(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR value is not an integer or out of range');
+        $conn = $this->createExtConnection('main');
+        $conn->set('d', 0);
+        $conn->decr('d');
+    }
+
     public function test_string_decrByFloat(): void
     {
         $conn = $this->createExtConnection('main');
         $this->assertSame(-1.0, $conn->decrByFloat('d', 1));
         $this->assertSame(-3.2, $conn->decrByFloat('d', 2.2));
         $this->assertSame(-1.0, $conn->decrByFloat('d', -2.2));
+    }
+
+    public function test_string_decrByFloat__on_serialized(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR value is not a valid float');
+        $conn = $this->createExtConnection('main');
+        $conn->set('d', 0.1);
+        $conn->decrByFloat('d', 1.1);
     }
 
     public function test_string_get(): void
@@ -442,12 +526,30 @@ final class ConnectionTest extends TestCase
         $this->assertSame(1, $conn->incr('d', -2));
     }
 
+    public function test_string_incr__on_serialized(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR value is not an integer or out of range');
+        $conn = $this->createExtConnection('main');
+        $conn->set('d', 0);
+        $conn->incr('d');
+    }
+
     public function test_string_incrByFloat(): void
     {
         $conn = $this->createExtConnection('main');
         $this->assertSame(1.0, $conn->incrByFloat('d', 1));
         $this->assertSame(3.2, $conn->incrByFloat('d', 2.2));
         $this->assertSame(1.0, $conn->incrByFloat('d', -2.2));
+    }
+
+    public function test_string_incrByFloat__on_serialized(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR value is not a valid float');
+        $conn = $this->createExtConnection('main');
+        $conn->set('d', 0.1);
+        $conn->incrByFloat('d', 1.1);
     }
 
     public function test_string_mGet(): void

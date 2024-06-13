@@ -2,6 +2,7 @@
 
 namespace Tests\Kirameki\Redis;
 
+use Kirameki\Core\Testing\TestCase as BaseTestCase;
 use Kirameki\Event\EventManager;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
@@ -11,7 +12,7 @@ use Kirameki\Redis\RedisManager;
 /**
  * @mixin TestCase
  */
-abstract class TestCase extends \Kirameki\Core\Testing\TestCase
+abstract class TestCase extends BaseTestCase
 {
     protected ?RedisManager $redis = null;
 

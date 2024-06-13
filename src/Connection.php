@@ -180,8 +180,18 @@ class Connection
     }
 
     /**
+     * @link https://redis.io/docs/commands/client-kill
+     * @param string $ipAddressAndPort
+     * @return bool
+     */
+    public function clientKill(string $ipAddressAndPort): bool
+    {
+        return $this->run('client', 'kill', $ipAddressAndPort);
+    }
+
+    /**
      * @link https://redis.io/docs/commands/client-list
-     * @return list<string>
+     * @return list<array{ id: int, addr: string, laddr: string, fd: int, name: string, db: int }>
      */
     public function clientList(): array
     {

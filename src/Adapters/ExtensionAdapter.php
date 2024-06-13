@@ -107,8 +107,8 @@ class ExtensionAdapter extends Adapter
             $readTimeoutSeconds = $config->readTimeoutSeconds ?? 0.0;
 
             $config->persistent
-                ? $client->pconnect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds)
-                : $client->connect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds);
+                ? @$client->pconnect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds)
+                : @$client->connect($host, $port, $connectTimeoutSeconds, null, 0, $readTimeoutSeconds);
 
             $client->setOption(Redis::OPT_PREFIX, $config->prefix);
             $client->setOption(Redis::OPT_SCAN, Redis::SCAN_PREFIX);
