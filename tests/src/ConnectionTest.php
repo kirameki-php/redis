@@ -51,6 +51,33 @@ final class ConnectionTest extends TestCase
         }
     }
 
+    public function test_connection__auth_user(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->acl('setuser', 'test', 'on');
+        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 'test'));
+        $this->assertTrue($userConn->ping());
+        $this->assertSame(1, $conn->acl('deluser', 'test'));
+    }
+
+    public function test_connection__auth_password(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->acl('setuser', 't2', 'on', '>hihi', 'allcommands');
+        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 't2', password: 'hihi'));
+        $this->assertTrue($userConn->ping());
+    }
+
+    public function test_connection__auth_password_invalid(): void
+    {
+        $this->expectException(ConnectionException::class);
+        $this->expectExceptionMessage('WRONGPASS invalid username-password pair or user is disabled.');
+        $conn = $this->createExtConnection('main');
+        $conn->acl('setuser', 't2', 'on', '>hihi', 'allcommands');
+        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 't2', password: ''));
+        $userConn->ping();
+    }
+
     public function test_construct__does_not_actually_connect(): void
     {
         $conn = $this->createExtConnection('main');
@@ -460,6 +487,14 @@ final class ConnectionTest extends TestCase
         $this->assertSame(0, $conn->dbSize());
         $conn->mSet(['a' => 1, 'b' => 2]);
         $this->assertSame(2, $conn->dbSize());
+    }
+
+    public function test_server_acl(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->acl('setuser', 'acl', 'on', '>hi', 'allcommands');
+        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 'acl', password: 'hi'));
+        $this->assertTrue($userConn->ping());
     }
 
     # endregion SERVER -------------------------------------------------------------------------------------------------

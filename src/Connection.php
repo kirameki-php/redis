@@ -496,6 +496,17 @@ class Connection
     # region SERVER ----------------------------------------------------------------------------------------------------
 
     /**
+     * @link https://redis.io/docs/commands/acl
+     * @param string $operation
+     * @param string ...$args
+     * @return mixed
+     */
+    public function acl(string $operation, string ...$args): mixed
+    {
+        return $this->run(__FUNCTION__, $operation, ...$args);
+    }
+
+    /**
      * @link https://redis.io/docs/commands/dbsize
      * @return int
      */
