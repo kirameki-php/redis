@@ -8,6 +8,7 @@ use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
 use Kirameki\Redis\Connection;
 use Kirameki\Redis\RedisManager;
+use Redis;
 
 /**
  * @mixin TestCase
@@ -24,7 +25,7 @@ abstract class TestCase extends BaseTestCase
     public function createExtConnection(string $name, ?ExtensionConfig $config = null): Connection
     {
         $redis = $this->createManager();
-        $redis->setConnectionConfig($name, $config ?? new ExtensionConfig('redis'));
+        $redis->setConnectionConfig($name, $config ?? new ExtensionConfig('redis', serializer: Redis::SERIALIZER_PHP));
 
         $connection = $redis->use($name);
         $this->runAfterTearDown(static function () use ($connection): void {

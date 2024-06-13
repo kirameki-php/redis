@@ -7,11 +7,13 @@ use Kirameki\Collections\Vec;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
+use Kirameki\Redis\Support\SetOption;
 use Kirameki\Redis\Support\Type;
 use Redis;
 use stdClass;
 use function array_keys;
 use function count;
+use function dump;
 use function mt_rand;
 use function time;
 
@@ -43,9 +45,17 @@ final class ConnectionTest extends TestCase
     {
         $this->expectException(CommandException::class);
         $this->expectExceptionMessage('read error on connection to redis:6379');
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis', readTimeoutSeconds: 0.00001));
         try {
+            $retry = 0;
+            retry_read_timeout:
+            $conn = $this->createExtConnection('main', new ExtensionConfig('redis', readTimeoutSeconds: 0.000001));
             $conn->echo('hi');
+        } catch (CommandException $e) {
+            if ($retry <= 10) {
+                $retry++;
+                goto retry_read_timeout;
+            }
+            throw $e;
         } finally {
             $conn->disconnect();
         }
@@ -434,6 +444,18 @@ final class ConnectionTest extends TestCase
             $this->assertTrue($conn->set($key, $value));
             $this->assertSame($expected, $conn->get($key));
         }
+    }
+
+    public function test_generic_set_xx(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertFalse($conn->set('t', 1, ['xx']));
+        $this->assertFalse($conn->set('t', 1, SetOption::ifExist()));
+        $this->assertFalse($conn->get('t'));
+        $this->assertTrue($conn->set('t', 1));
+        $this->assertTrue($conn->set('t', 2, ['xx']));
+        $this->assertTrue($conn->set('t', 3, SetOption::ifExist()));
+        $this->assertSame(3, $conn->get('t'));
     }
 
     public function test_generic_ttl(): void

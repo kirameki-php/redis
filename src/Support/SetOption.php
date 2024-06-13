@@ -7,24 +7,24 @@ use DateTimeInterface;
 class SetOption
 {
     /**
-     * @var float
+     * @var float|null
      */
-    protected float $ex;
+    protected ?float $ex = null;
 
     /**
-     * @var float
+     * @var float|null
      */
-    protected float $exAt;
+    protected ?float $exAt = null;
 
     /**
-     * @var bool
+     * @var bool|null
      */
-    protected bool $keepTtl;
+    protected ?bool $keepTtl = null;
 
     /**
-     * @var bool
+     * @var bool|null
      */
-    protected bool $get;
+    protected ?bool $get = null;
 
     /**
      * @return self
@@ -104,19 +104,19 @@ class SetOption
             $options[] = $this->set;
         }
 
-        if ($this->ex) {
+        if ($this->ex !== null) {
             $options['PX'] = $this->ex * 1000;
         }
 
-        if ($this->exAt) {
+        if ($this->exAt !== null) {
             $options['PXAT'] = $this->exAt * 1000;
         }
 
-        if ($this->keepTtl) {
+        if ($this->keepTtl !== null) {
             $options[] = 'KEEPTTL';
         }
 
-        if ($this->get) {
+        if ($this->get !== null) {
             $options[] = 'GET';
         }
 

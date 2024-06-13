@@ -8,7 +8,7 @@ jobs:
     - uses: php-actions/composer@v6
       with:
         php_version: 8.3
-        php_extensions: intl pcntl
+        php_extensions: intl pcntl redis
     - name: Run test with docker compose
       run: docker compose run --quiet-pull --rm app composer ci-test
     - uses: php-actions/phpstan@v3
