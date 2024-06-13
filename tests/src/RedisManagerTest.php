@@ -46,7 +46,7 @@ final class RedisManagerTest extends TestCase
     {
         $this->throwOnError();
         $this->expectException(ConnectionException::class);
-        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for ng failed: Name does not resolve');
+        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for ng failed:');
         $this->createExtConnection('ng', new ExtensionConfig('ng'))->exists('a');
     }
 

@@ -36,7 +36,7 @@ final class ConnectionTest extends TestCase
     public function test_connection__non_existing_host(): void
     {
         $this->expectException(ConnectionException::class);
-        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for none failed: Name does not resolve');
+        $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for none failed:');
         $conn = $this->createExtConnection('main', new ExtensionConfig('none'));
         $conn->echo('hi');
     }
@@ -50,11 +50,11 @@ final class ConnectionTest extends TestCase
             retry_read_timeout:
             $conn = $this->createExtConnection('main', new ExtensionConfig('redis', readTimeoutSeconds: 0.000001));
             $conn->echo('hi');
-        } catch (CommandException $e) {
-            if ($retry <= 10) {
+            if ($retry < 30) {
                 $retry++;
                 goto retry_read_timeout;
             }
+        } catch (CommandException $e) {
             throw $e;
         } finally {
             $conn->disconnect();

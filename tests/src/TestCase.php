@@ -25,7 +25,7 @@ abstract class TestCase extends BaseTestCase
     public function createExtConnection(string $name, ?ExtensionConfig $config = null): Connection
     {
         $redis = $this->createManager();
-        $redis->setConnectionConfig($name, $config ?? new ExtensionConfig('redis', serializer: Redis::SERIALIZER_PHP));
+        $redis->setConnectionConfig($name, $config ?? new ExtensionConfig('redis'));
 
         $connection = $redis->use($name);
         $this->runAfterTearDown(static function () use ($connection): void {

@@ -5,16 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: php-actions/composer@v6
-      with:
-        php_version: 8.3
-        php_extensions: intl pcntl redis
-    - name: Run test with docker compose
+    - name: Run phpunit
       run: docker compose run --quiet-pull --rm app composer ci-test
-    - uses: php-actions/phpstan@v3
-      with:
-        php_version: 8.3
-        memory_limit: 1G
+    - name: Run phpstan
+      run: docker compose run --quiet-pull --rm app composer analyze
     - uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
