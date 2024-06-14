@@ -658,13 +658,61 @@ class Connection
     /**
      * @link https://redis.io/docs/commands/set
      * @param string $key
+     * The key to set.
      * @param mixed $value
-     * @param SetOptions|null $options
+     * The value to set. Can be any type when serialization is enabled, can only be scalar type when disabled.
+     * @param bool $nx
+     * When set to `true`, the key will only be set if it does not already exist. Can not be used with `xx`.
+     * Defaults to `false`.
+     * @param bool $xx
+     * When set to `true`, the key will only be set if it already exists. Can not be used with `nx`.
+     * Defaults to `false`.
+     * @param int|null $ex
+     * The number of seconds until the key will expire. Can not be used with `exAt`.
+     * Defaults to `null`.
+     * @param DateTimeInterface|null $exAt
+     * The timestamp when the key will expire. Can not be used with `ex`.
+     * Defaults to `null`.
+     * @param bool $keepTtl
+     * When set to `true`, the key will retain its ttl if key already exists.
+     * Defaults to `false`.
+     * @param bool $get
+     * When set to `true`, the previous value of the key will be returned.
+     * Defaults to `false`.
      * @return mixed
      */
-    public function set(string $key, mixed $value, SetOptions|null $options = null): mixed
+    public function set(
+        string $key,
+        mixed $value,
+        bool $nx = false,
+        bool $xx = false,
+        ?int $ex = null,
+        ?DateTimeInterface $exAt = null,
+        bool $keepTtl = false,
+        bool $get = false,
+    ): mixed
     {
-        return $this->run(__FUNCTION__, $key, $value, $options?->toArray() ?? []);
+        $options = [];
+        if ($nx) {
+            $options[] = 'nx';
+        }
+        if ($xx) {
+            $options[] = 'xx';
+        }
+        if ($ex !== null) {
+            $options['ex'] = $ex;
+        }
+        if ($exAt !== null) {
+            $options['exat'] = $exAt->getTimestamp();
+        }
+        if ($keepTtl) {
+            $options[] = 'keepttl';
+        }
+        if ($get) {
+            $options[] = 'get';
+        }
+
+        return $this->run(__FUNCTION__, $key, $value, $options);
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------

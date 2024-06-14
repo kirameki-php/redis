@@ -260,7 +260,7 @@ final class ConnectionTest extends TestCase
     public function test_generic_persist(): void
     {
         $conn = $this->createExtConnection('main');
-        $conn->set('a', 1, SetOptions::of(ex: 1));
+        $conn->set('a', 1, ex: 1);
         $conn->set('b', 1);
         $this->assertTrue($conn->persist('a'));
         $this->assertFalse($conn->persist('b'));
@@ -352,6 +352,37 @@ final class ConnectionTest extends TestCase
         $secondsAhead = new DateTimeImmutable('+1 seconds');
         $conn->expireAt('a', $secondsAhead);
         $this->assertLessThanOrEqual(1, $conn->ttl('a'));
+
+        $conn->set('b', 1);
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->expireAt('b', $secondsAhead, TtlOption::Nx);
+        $this->assertLessThanOrEqual(3, $conn->ttl('b'));
+        $secondsAhead = new DateTimeImmutable('+1 seconds');
+        $conn->expireAt('b', $secondsAhead, TtlOption::Nx);
+        $this->assertGreaterThan(1, $conn->ttl('b'));
+
+        $conn->set('c', 1);
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->expireAt('c', $secondsAhead, TtlOption::Xx);
+        $this->assertNull($conn->ttl('c'));
+        $conn->set('c', 1);
+        $secondsAhead = new DateTimeImmutable('+2 seconds');
+        $conn->expireAt('c', $secondsAhead);
+        $this->assertLessThanOrEqual(2, $conn->ttl('c'));
+
+        $conn->set('d', 1);
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->expireAt('d', $secondsAhead, TtlOption::Gt);
+        $this->assertNull($conn->ttl('d'));
+        $conn->set('d', 1, ex: 1);
+        $secondsAhead = new DateTimeImmutable('+2 seconds');
+        $conn->expireAt('d', $secondsAhead);
+        $conn->expireAt('d', $secondsAhead, TtlOption::Gt);
+        $this->assertLessThanOrEqual(2, $conn->ttl('d'));
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->expireAt('d', $secondsAhead, TtlOption::Gt);
+        $this->assertGreaterThan(1, $conn->ttl('d'));
+
     }
 
     public function test_generic_randomKey(): void
@@ -459,27 +490,27 @@ final class ConnectionTest extends TestCase
     public function test_generic_set_nx(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
-        $this->assertTrue($conn->set('t', 1, SetOptions::of(nx: true)));
+        $this->assertTrue($conn->set('t', 1, nx: true));
         $this->assertSame(1, $conn->get('t'));
-        $this->assertFalse($conn->set('t', 2, SetOptions::of(nx: true)));
+        $this->assertFalse($conn->set('t', 2, nx: true));
         $this->assertSame(1, $conn->get('t'));
     }
 
     public function test_generic_set_xx(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
-        $this->assertFalse($conn->set('t', 1, SetOptions::of(xx: true)));
+        $this->assertFalse($conn->set('t', 1, xx: true));
         $this->assertFalse($conn->get('t'));
         $this->assertTrue($conn->set('t', 1));
-        $this->assertTrue($conn->set('t', 2, SetOptions::of(xx: true)));
-        $this->assertTrue($conn->set('t', 3, SetOptions::of(xx: true)));
+        $this->assertTrue($conn->set('t', 2, xx: true));
+        $this->assertTrue($conn->set('t', 3, xx: true));
         $this->assertSame(3, $conn->get('t'));
     }
 
     public function test_generic_set_ex(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
-        $this->assertTrue($conn->set('t', 1, SetOptions::of(ex: 3)));
+        $this->assertTrue($conn->set('t', 1, ex: 3));
         $this->assertLessThanOrEqual(3, $conn->ttl('t'));
     }
 
@@ -487,7 +518,7 @@ final class ConnectionTest extends TestCase
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
         $secondsAhead = new DateTimeImmutable('+3 seconds');
-        $this->assertTrue($conn->set('t2', 1, SetOptions::of(exAt: $secondsAhead)));
+        $this->assertTrue($conn->set('t2', 1, exAt: $secondsAhead));
         $this->assertLessThanOrEqual(3, $conn->ttl('t1'));
         $this->assertLessThanOrEqual(3, $conn->ttl('t2'));
     }
@@ -495,12 +526,12 @@ final class ConnectionTest extends TestCase
     public function test_generic_set_keepTtl(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
-        $this->assertTrue($conn->set('t1', 1, SetOptions::of(ex: 300)));
-        $this->assertTrue($conn->set('t1', 2, SetOptions::of(keepTtl: true)));
+        $this->assertTrue($conn->set('t1', 1, ex: 300));
+        $this->assertTrue($conn->set('t1', 2, keepTtl: true));
         $this->assertSame(2, $conn->get('t1'));
         $this->assertLessThanOrEqual(300, $conn->ttl('t1'));
 
-        $this->assertTrue($conn->set('t1', 1, SetOptions::of(ex: 300)));
+        $this->assertTrue($conn->set('t1', 1, ex: 300));
         $this->assertTrue($conn->set('t1', 2));
         $this->assertSame(2, $conn->get('t1'));
         $this->assertNull($conn->ttl('t1'));
@@ -509,16 +540,16 @@ final class ConnectionTest extends TestCase
     public function test_generic_set_get(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
-        $this->assertFalse($conn->set('t', 1, SetOptions::of(get: true)));
-        $this->assertSame(1, $conn->set('t', 2, SetOptions::of(get: true)));
-        $this->assertSame(2, $conn->set('t', 3, SetOptions::of(nx: true, get: true)));
-        $this->assertSame(2, $conn->set('t', 4, SetOptions::of(xx: true, get: true)));
+        $this->assertFalse($conn->set('t', 1, get: true));
+        $this->assertSame(1, $conn->set('t', 2, get: true));
+        $this->assertSame(2, $conn->set('t', 3, nx: true, get: true));
+        $this->assertSame(2, $conn->set('t', 4, xx: true, get: true));
     }
 
     public function test_generic_ttl(): void
     {
         $conn = $this->createExtConnection('main');
-        $conn->set('a', 1, SetOptions::of(ex: 5));
+        $conn->set('a', 1, ex: 5);
         $conn->set('b', 1);
         $this->assertSame(5, $conn->ttl('a'));
         $this->assertNull($conn->ttl('b'));
@@ -528,7 +559,7 @@ final class ConnectionTest extends TestCase
     public function test_generic_pTtl(): void
     {
         $conn = $this->createExtConnection('main');
-        $conn->set('a', 1, SetOptions::of(ex: 1));
+        $conn->set('a', 1, ex: 1);
         $conn->set('b', 1);
         $this->assertLessThanOrEqual(1000, $conn->pTtl('a'));
         $this->assertNull($conn->pTtl('b'));
