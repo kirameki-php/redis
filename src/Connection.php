@@ -3,6 +3,7 @@
 namespace Kirameki\Redis;
 
 use Closure;
+use DateTimeInterface;
 use Kirameki\Collections\LazyIterator;
 use Kirameki\Collections\Vec;
 use Kirameki\Event\EventManager;
@@ -12,6 +13,7 @@ use Kirameki\Redis\Events\CommandExecuted;
 use Kirameki\Redis\Events\ConnectionEstablished;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Options\SetOptions;
+use Kirameki\Redis\Options\TtlOption;
 use Kirameki\Redis\Options\Type;
 use LogicException;
 use Redis;
@@ -319,48 +321,48 @@ class Connection
      * @link https://redis.io/docs/commands/expire
      * @param string $key
      * @param int $seconds
-     * @param string|null $mode
+     * @param TtlOption|null $option
      * @return bool
      */
-    public function expire(string $key, int $seconds, ?string $mode = null): bool
+    public function expire(string $key, int $seconds, ?TtlOption $option = null): bool
     {
-        return $this->run(__FUNCTION__, $key, $seconds, $mode);
+        return $this->run(__FUNCTION__, $key, $seconds, $option?->value);
     }
 
     /**
      * @link https://redis.io/docs/commands/pexpire
      * @param string $key
      * @param int $milliseconds
-     * @param string|null $mode
+     * @param TtlOption|null $option
      * @return bool
      */
-    public function pExpire(string $key, int $milliseconds, ?string $mode = null): bool
+    public function pExpire(string $key, int $milliseconds, ?TtlOption $option = null): bool
     {
-        return $this->run('pexpire', $key, $milliseconds, $mode);
+        return $this->run('pexpire', $key, $milliseconds, $option?->value);
     }
 
     /**
      * @link https://redis.io/docs/commands/expireat
      * @param string $key
-     * @param int $unixTimeSeconds
-     * @param string|null $mode
+     * @param DateTimeInterface $time
+     * @param TtlOption|null $option
      * @return bool
      */
-    public function expireAt(string $key, int $unixTimeSeconds, ?string $mode = null): bool
+    public function expireAt(string $key, DateTimeInterface $time, ?TtlOption $option = null): bool
     {
-        return $this->run(__FUNCTION__, $key, $unixTimeSeconds, $mode);
+        return $this->run(__FUNCTION__, $key, $time->getTimestamp(), $option?->value);
     }
 
     /**
      * @link https://redis.io/docs/commands/pexpireat
      * @param string $key
-     * @param int $unixTimeMilliseconds
-     * @param string|null $mode
+     * @param DateTimeInterface $time
+     * @param TtlOption|null $option
      * @return bool
      */
-    public function pExpireAt(string $key, int $unixTimeMilliseconds, ?string $mode = null): bool
+    public function pExpireAt(string $key, DateTimeInterface $time, ?TtlOption $option = null): bool
     {
-        return $this->run('pexpireAt', $key, $unixTimeMilliseconds, $mode);
+        return $this->run('pexpireAt', $key, $time, $option?->value);
     }
 
     /**
@@ -657,16 +659,12 @@ class Connection
      * @link https://redis.io/docs/commands/set
      * @param string $key
      * @param mixed $value
-     * @param SetOptions|array<array-key, scalar>|null $options
+     * @param SetOptions|null $options
      * @return mixed
      */
-    public function set(string $key, mixed $value, SetOptions|array|null $options = null): mixed
+    public function set(string $key, mixed $value, SetOptions|null $options = null): mixed
     {
-        $opts = ($options instanceof SetOptions)
-            ? $options->toArray()
-            : $options ?? [];
-
-        return $this->run(__FUNCTION__, $key, $value, $opts);
+        return $this->run(__FUNCTION__, $key, $value, $options?->toArray() ?? []);
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------
