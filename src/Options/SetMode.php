@@ -2,10 +2,8 @@
 
 namespace Kirameki\Redis\Options;
 
-enum TtlOption: string
+enum SetMode: string
 {
     case Nx = 'nx';
     case Xx = 'xx';
-    case Gt = 'gt';
-    case Lt = 'lt';
 }

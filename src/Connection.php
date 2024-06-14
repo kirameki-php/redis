@@ -12,8 +12,9 @@ use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Events\CommandExecuted;
 use Kirameki\Redis\Events\ConnectionEstablished;
 use Kirameki\Redis\Exceptions\CommandException;
+use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\SetOptions;
-use Kirameki\Redis\Options\TtlOption;
+use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use LogicException;
 use Redis;
@@ -321,48 +322,48 @@ class Connection
      * @link https://redis.io/docs/commands/expire
      * @param string $key
      * @param int $seconds
-     * @param TtlOption|null $option
+     * @param TtlMode|null $mode
      * @return bool
      */
-    public function expire(string $key, int $seconds, ?TtlOption $option = null): bool
+    public function expire(string $key, int $seconds, ?TtlMode $mode = null): bool
     {
-        return $this->run(__FUNCTION__, $key, $seconds, $option?->value);
+        return $this->run(__FUNCTION__, $key, $seconds, $mode?->value);
     }
 
     /**
      * @link https://redis.io/docs/commands/pexpire
      * @param string $key
      * @param int $milliseconds
-     * @param TtlOption|null $option
+     * @param TtlMode|null $mode
      * @return bool
      */
-    public function pExpire(string $key, int $milliseconds, ?TtlOption $option = null): bool
+    public function pExpire(string $key, int $milliseconds, ?TtlMode $mode = null): bool
     {
-        return $this->run('pexpire', $key, $milliseconds, $option?->value);
+        return $this->run('pexpire', $key, $milliseconds, $mode?->value);
     }
 
     /**
      * @link https://redis.io/docs/commands/expireat
      * @param string $key
      * @param DateTimeInterface $time
-     * @param TtlOption|null $option
+     * @param TtlMode|null $mode
      * @return bool
      */
-    public function expireAt(string $key, DateTimeInterface $time, ?TtlOption $option = null): bool
+    public function expireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
     {
-        return $this->run(__FUNCTION__, $key, $time->getTimestamp(), $option?->value);
+        return $this->run(__FUNCTION__, $key, $time->getTimestamp(), $mode?->value);
     }
 
     /**
      * @link https://redis.io/docs/commands/pexpireat
      * @param string $key
      * @param DateTimeInterface $time
-     * @param TtlOption|null $option
+     * @param TtlMode|null $mode
      * @return bool
      */
-    public function pExpireAt(string $key, DateTimeInterface $time, ?TtlOption $option = null): bool
+    public function pExpireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
     {
-        return $this->run('pexpireAt', $key, $time, $option?->value);
+        return $this->run('pexpireAt', $key, $time, $mode?->value);
     }
 
     /**
@@ -661,12 +662,8 @@ class Connection
      * The key to set.
      * @param mixed $value
      * The value to set. Can be any type when serialization is enabled, can only be scalar type when disabled.
-     * @param bool $nx
-     * When set to `true`, the key will only be set if it does not already exist. Can not be used with `xx`.
-     * Defaults to `false`.
-     * @param bool $xx
-     * When set to `true`, the key will only be set if it already exists. Can not be used with `nx`.
-     * Defaults to `false`.
+     * @param SetMode|null $mode
+     * The mode to set the key. Can be `SetMode::Nx` or `SetMode::Xx`. Defaults to `null`.
      * @param int|null $ex
      * The number of seconds until the key will expire. Can not be used with `exAt`.
      * Defaults to `null`.
@@ -684,8 +681,7 @@ class Connection
     public function set(
         string $key,
         mixed $value,
-        bool $nx = false,
-        bool $xx = false,
+        ?SetMode $mode = null,
         ?int $ex = null,
         ?DateTimeInterface $exAt = null,
         bool $keepTtl = false,
@@ -693,11 +689,8 @@ class Connection
     ): mixed
     {
         $options = [];
-        if ($nx) {
-            $options[] = 'nx';
-        }
-        if ($xx) {
-            $options[] = 'xx';
+        if ($mode !== null) {
+            $options[] = $mode->value;
         }
         if ($ex !== null) {
             $options['ex'] = $ex;
