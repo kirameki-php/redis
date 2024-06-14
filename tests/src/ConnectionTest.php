@@ -2,18 +2,18 @@
 
 namespace Tests\Kirameki\Redis;
 
+use DateTime;
 use Kirameki\Collections\Utils\Arr;
 use Kirameki\Collections\Vec;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
-use Kirameki\Redis\Support\SetOption;
-use Kirameki\Redis\Support\Type;
+use Kirameki\Redis\Options\SetOptions;
+use Kirameki\Redis\Options\Type;
 use Redis;
 use stdClass;
 use function array_keys;
 use function count;
-use function dump;
 use function mt_rand;
 use function time;
 
@@ -446,16 +446,71 @@ final class ConnectionTest extends TestCase
         }
     }
 
+    public function test_generic_set_nx(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertTrue($conn->set('t1', 1, ['nx']));
+        $this->assertSame(1, $conn->get('t1'));
+        $this->assertFalse($conn->set('t1', 2, ['nx']));
+        $this->assertSame(1, $conn->get('t1'));
+        $this->assertTrue($conn->set('t2', 1, SetOptions::of(nx: true)));
+        $this->assertSame(1, $conn->get('t2'));
+        $this->assertFalse($conn->set('t2', 2, SetOptions::of(nx: true)));
+        $this->assertSame(1, $conn->get('t2'));
+    }
+
     public function test_generic_set_xx(): void
     {
         $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
         $this->assertFalse($conn->set('t', 1, ['xx']));
-        $this->assertFalse($conn->set('t', 1, SetOption::ifExist()));
+        $this->assertFalse($conn->set('t', 1, SetOptions::of(xx: true)));
         $this->assertFalse($conn->get('t'));
         $this->assertTrue($conn->set('t', 1));
         $this->assertTrue($conn->set('t', 2, ['xx']));
-        $this->assertTrue($conn->set('t', 3, SetOption::ifExist()));
+        $this->assertTrue($conn->set('t', 3, SetOptions::of(xx: true)));
         $this->assertSame(3, $conn->get('t'));
+    }
+
+    public function test_generic_set_ex(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertTrue($conn->set('t1', 1, ['ex' => 3]));
+        $this->assertTrue($conn->set('t2', 1, SetOptions::of(ex: 3)));
+        $this->assertLessThanOrEqual(3, $conn->ttl('t1'));
+        $this->assertLessThanOrEqual(3, $conn->ttl('t2'));
+    }
+
+    public function test_generic_set_exAt(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $secondsAhead = new DateTime('+3 seconds');
+        $this->assertTrue($conn->set('t1', 1, ['exat' => $secondsAhead->getTimestamp()]));
+        $this->assertTrue($conn->set('t2', 1, SetOptions::of(exAt: $secondsAhead)));
+        $this->assertLessThanOrEqual(3, $conn->ttl('t1'));
+        $this->assertLessThanOrEqual(3, $conn->ttl('t2'));
+    }
+
+    public function test_generic_set_keepTtl(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertTrue($conn->set('t1', 1, ['ex' => 300]));
+        $this->assertTrue($conn->set('t1', 2, SetOptions::of(keepTtl: true)));
+        $this->assertSame(2, $conn->get('t1'));
+        $this->assertLessThanOrEqual(300, $conn->ttl('t1'));
+
+        $this->assertTrue($conn->set('t1', 1, ['ex' => 300]));
+        $this->assertTrue($conn->set('t1', 2));
+        $this->assertSame(2, $conn->get('t1'));
+        $this->assertNull($conn->ttl('t1'));
+    }
+
+    public function test_generic_set_get(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertFalse($conn->set('t', 1, SetOptions::of(get: true)));
+        $this->assertSame(1, $conn->set('t', 2, SetOptions::of(get: true)));
+        $this->assertSame(2, $conn->set('t', 3, SetOptions::of(nx: true, get: true)));
+        $this->assertSame(2, $conn->set('t', 4, SetOptions::of(xx: true, get: true)));
     }
 
     public function test_generic_ttl(): void

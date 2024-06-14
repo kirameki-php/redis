@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Kirameki\Redis\Support;
+namespace Kirameki\Redis\Options;
 
 enum Type: string
 {
