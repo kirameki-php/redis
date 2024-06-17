@@ -9,13 +9,13 @@ use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\Options\SetMode;
-use Kirameki\Redis\Options\SetOptions;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use Redis;
 use stdClass;
 use function array_keys;
 use function count;
+use function dump;
 use function mt_rand;
 use function time;
 
@@ -383,7 +383,45 @@ final class ConnectionTest extends TestCase
         $secondsAhead = new DateTimeImmutable('+3 seconds');
         $conn->expireAt('d', $secondsAhead, TtlMode::Gt);
         $this->assertGreaterThan(1, $conn->ttl('d'));
+    }
 
+    public function test_generic_pExpireAt(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->set('a', 1);
+        $secondsAhead = new DateTimeImmutable('+1 seconds');
+        $conn->pExpireAt('a', $secondsAhead);
+        $this->assertLessThanOrEqual(1000, $conn->pTtl('a'));
+
+        $conn->set('b', 1);
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->pExpireAt('b', $secondsAhead, TtlMode::Nx);
+        $this->assertLessThanOrEqual(3000, $conn->pTtl('b'));
+        $secondsAhead = new DateTimeImmutable('+1 seconds');
+        $conn->pExpireAt('b', $secondsAhead, TtlMode::Nx);
+        $this->assertGreaterThan(1000, $conn->pTtl('b'));
+
+        $conn->set('c', 1);
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->pExpireAt('c', $secondsAhead, TtlMode::Xx);
+        $this->assertNull($conn->pTtl('c'));
+        $conn->set('c', 1);
+        $secondsAhead = new DateTimeImmutable('+2 seconds');
+        $conn->pExpireAt('c', $secondsAhead);
+        $this->assertLessThanOrEqual(2000, $conn->pTtl('c'));
+
+        $conn->set('d', 1);
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->pExpireAt('d', $secondsAhead, TtlMode::Gt);
+        $this->assertNull($conn->pTtl('d'));
+        $conn->set('d', 1, ex: 1);
+        $secondsAhead = new DateTimeImmutable('+2 seconds');
+        $conn->pExpireAt('d', $secondsAhead);
+        $conn->pExpireAt('d', $secondsAhead, TtlMode::Gt);
+        $this->assertLessThanOrEqual(2000, $conn->pTtl('d'));
+        $secondsAhead = new DateTimeImmutable('+3 seconds');
+        $conn->pExpireAt('d', $secondsAhead, TtlMode::Gt);
+        $this->assertGreaterThan(1000, $conn->pTtl('d'));
     }
 
     public function test_generic_randomKey(): void

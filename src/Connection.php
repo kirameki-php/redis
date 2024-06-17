@@ -363,7 +363,7 @@ class Connection
      */
     public function pExpireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
     {
-        return $this->run('pexpireAt', $key, $time, $mode?->value);
+        return $this->run('pexpireAt', $key, $time->getTimestamp() * 1000, $mode?->value);
     }
 
     /**
