@@ -137,8 +137,31 @@ class ExtensionAdapter extends Adapter
     #[Override]
     public function command(string $name, array $args): mixed
     {
+        return $this->execCommand($name, $args, false);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function rawCommand(string $name, array $args): mixed
+    {
+        return $this->execCommand($name, $args, true);
+    }
+
+    /**
+     * @param string $name
+     * @param list<mixed> $args
+     * @param bool $raw
+     * @return mixed
+     */
+    protected function execCommand(string $name, array $args, bool $raw): mixed
+    {
         $client = $this->getClient();
-        $result = $this->withCatch(static fn() => $client->$name(...$args));
+
+        $result = $raw
+            ? $this->withCatch(static fn() => $client->rawCommand($name, ...$args))
+            : $this->withCatch(static fn() => $client->$name(...$args));
 
         if ($err = $client->getLastError()) {
             $client->clearLastError();

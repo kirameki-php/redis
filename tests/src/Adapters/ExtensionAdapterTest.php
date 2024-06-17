@@ -36,4 +36,12 @@ final class ExtensionAdapterTest extends TestCase
         $adapter = new ExtensionAdapter($config);
         $adapter->connect();
     }
+
+    public function test_rawCommand(): void
+    {
+        $adapter = new ExtensionAdapter(new ExtensionConfig('redis'));
+        $adapter->connect();
+        $result = $adapter->rawCommand('PING', []);
+        $this->assertEquals('PONG', $result);
+    }
 }

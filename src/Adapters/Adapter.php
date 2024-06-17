@@ -43,6 +43,13 @@ abstract class Adapter
     abstract public function command(string $name, array $args): mixed;
 
     /**
+     * @param string $name
+     * @param list<mixed> $args
+     * @return mixed
+     */
+    abstract public function rawCommand(string $name, array $args): mixed;
+
+    /**
      * @return int
      */
     abstract public function dbSize(): int;
