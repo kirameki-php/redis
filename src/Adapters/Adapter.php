@@ -4,7 +4,6 @@ namespace Kirameki\Redis\Adapters;
 
 use Generator;
 use Kirameki\Redis\Config\ConnectionConfig;
-use function dump;
 
 /**
  * @template TConnectionConfig of ConnectionConfig

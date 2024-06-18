@@ -891,4 +891,175 @@ final class ConnectionTest extends TestCase
     }
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
+
+    # region SCRIPT ----------------------------------------------------------------------------------------------------
+
+    public function test_script_eval__no_key_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->eval('return 1'));
+    }
+
+    public function test_script_eval__with_key(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->eval('return redis.call("incr", KEYS[1])', 1, 'eval'));
+        $this->assertSame(3, $conn->eval('return redis.call("get", KEYS[1]) + KEYS[2]', 2, 'eval', 2));
+        $this->assertSame('1', $conn->get('eval'));
+    }
+
+    public function test_script_eval__with_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->eval('return redis.call("incr", ARGV[1])', 0, 'eval'));
+        $this->assertSame('1', $conn->get('eval'));
+    }
+
+    public function test_script_eval__with_key_and_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertTrue($conn->eval('return redis.call("set", KEYS[1], ARGV[1] + 1)', 1, 'eval', 2));
+        $this->assertSame('3', $conn->get('eval'));
+    }
+
+    public function test_script_evalRo__no_key_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->evalRo('return 1'));
+    }
+
+    public function test_script_evalRo__with_key(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->incr('evalRo'));
+        $this->assertSame(3, $conn->evalRo('return redis.call("get", KEYS[1]) + KEYS[2]', 2, 'evalRo', 2));
+        $this->assertSame('1', $conn->get('evalRo'));
+    }
+
+    public function test_script_evalRo__with_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->incr('eval');
+        $this->assertSame('1', $conn->evalRo('return redis.call("get", ARGV[1])', 0, 'eval'));
+        $this->assertSame('1', $conn->get('eval'));
+    }
+
+    public function test_script_evalRo__with_key_and_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->incr('k1', 1);
+        $conn->incr('k2', 2);
+        $values = $conn->evalRo('return redis.call("mget", KEYS[1], ARGV[1])', 1, 'k1', 'k2');
+        $this->assertSame('1', $values[0]);
+        $this->assertSame('2', $values[1]);
+    }
+
+    public function test_script_evalRo__attempt_to_write(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR Write commands are not allowed from read-only scripts.');
+        $conn = $this->createExtConnection('main');
+        $conn->evalRo('return redis.call("incr", KEYS[1])', 1, 'k1');
+    }
+
+    public function test_script_evalSha__no_key_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $sha1 = $conn->scriptLoad('return 1');
+        $this->assertSame(1, $conn->evalSha($sha1));
+    }
+
+    public function test_script_evalSha__with_key(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $sha1Inc = $conn->scriptLoad('return redis.call("incr", KEYS[1])');
+        $sha1Get = $conn->scriptLoad('return redis.call("get", KEYS[1]) + KEYS[2]');
+        $this->assertSame(1, $conn->evalSha($sha1Inc, 1, 'eval'));
+        $this->assertSame(3, $conn->evalSha($sha1Get, 2, 'eval', 2));
+        $this->assertSame(2, $conn->evalSha($sha1Inc, 1, 'eval'));
+        $this->assertSame(4, $conn->evalSha($sha1Get, 2, 'eval', 2));
+        $this->assertSame('2', $conn->get('eval'));
+    }
+
+    public function test_script_evalSha__key_and_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $sha1 = $conn->scriptLoad('return redis.call("set", KEYS[1], ARGV[1] + 1)');
+        $this->assertTrue($conn->evalSha($sha1, 1, 'eval', 2));
+        $this->assertSame('3', $conn->get('eval'));
+    }
+
+    public function test_script_evalShaRo__no_key_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $sha1 = $conn->scriptLoad('return 1');
+        $this->assertSame(1, $conn->evalShaRo($sha1));
+    }
+
+    public function test_script_evalShaRo__with_key(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->incr('evalRo'));
+        $sha1 = $conn->scriptLoad('return redis.call("get", KEYS[1]) + KEYS[2]');
+        $this->assertSame(3, $conn->evalShaRo($sha1, 2, 'evalRo', 2));
+        $this->assertSame('1', $conn->get('evalRo'));
+    }
+
+    public function test_script_evalShaRo__with_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->incr('eval');
+        $sha1 = $conn->scriptLoad('return redis.call("get", ARGV[1])');
+        $this->assertSame('1', $conn->evalShaRo($sha1, 0, 'eval'));
+        $this->assertSame('1', $conn->get('eval'));
+    }
+
+    public function test_script_evalShaRo__with_key_and_args(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->incr('k1', 1);
+        $conn->incr('k2', 2);
+        $sha1 = $conn->scriptLoad('return redis.call("mget", KEYS[1], ARGV[1])');
+        $values = $conn->evalShaRo($sha1, 1, 'k1', 'k2');
+        $this->assertSame('1', $values[0]);
+        $this->assertSame('2', $values[1]);
+    }
+
+    public function test_script_evalShaRo__attempt_to_write(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR Write commands are not allowed from read-only scripts.');
+        $conn = $this->createExtConnection('main');
+        $sha1 = $conn->scriptLoad('return redis.call("incr", KEYS[1])');
+        $conn->evalShaRo($sha1, 1, 'k1');
+    }
+
+    public function test_script_exists(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $sha1 = $conn->scriptLoad('return 1');
+        $this->assertSame([false], $conn->scriptExists('no-such-sha1'));
+        $this->assertSame([true], $conn->scriptExists($sha1));
+        $this->assertSame([false, true], $conn->scriptExists('no-such-sha1', $sha1));
+    }
+
+    public function test_script_flush(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $sha1_1 = $conn->scriptLoad('return 1');
+        $sha1_2 = $conn->scriptLoad('return 2');
+        $this->assertSame([true, true, false], $conn->scriptExists($sha1_1, $sha1_2, 'no-such-sha1'));
+        $conn->scriptFlush();
+        $this->assertSame([false, false], $conn->scriptExists($sha1_1, $sha1_2));
+    }
+
+    public function test_script_load(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $sha1 = $conn->scriptLoad('return 1');
+        $this->assertSame('e0e1f9fabfc9d4800c877a703b823ac0578ff8db', $sha1);
+        $this->assertSame(1, $conn->evalSha($sha1));
+    }
+
+    # endregion SCRIPT -------------------------------------------------------------------------------------------------
 }

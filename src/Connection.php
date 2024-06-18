@@ -13,11 +13,11 @@ use Kirameki\Redis\Events\CommandExecuted;
 use Kirameki\Redis\Events\ConnectionEstablished;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Options\SetMode;
-use Kirameki\Redis\Options\SetOptions;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use LogicException;
 use Redis;
+use function array_map;
 use function count;
 use function dump;
 use function func_get_args;
@@ -145,6 +145,18 @@ class Connection
     {
         return $this->process($command, $args, static function(Adapter $adapter, string $name, array $args) {
             return $adapter->command($name, $args);
+        });
+    }
+
+    /**
+     * @param string $command
+     * @param mixed ...$args
+     * @return mixed
+     */
+    public function runRaw(string $command, mixed ...$args): mixed
+    {
+        return $this->process($command, $args, static function(Adapter $adapter, string $name, array $args) {
+            return $adapter->rawCommand($name, $args);
         });
     }
 
@@ -771,4 +783,85 @@ class Connection
     }
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
+
+    # region SCRIPT ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/commands/eval
+     * @param string $script
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(__FUNCTION__, $script, $arg, $numKeys);
+    }
+
+    /**
+     * @link https://redis.io/commands/evalsha_ro
+     * @param string $script
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->runRaw('eval_ro', $script, $numKeys, ...$arg);
+    }
+
+    /**
+     * @link https://redis.io/commands/evalsha
+     * @param string $sha1
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->runRaw('evalsha', $sha1, $numKeys, ...$arg);
+    }
+
+    /**
+     * @link https://redis.io/commands/evalsha_ro
+     * @param string $sha1
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->runRaw('evalsha_ro', $sha1, $numKeys, ...$arg);
+    }
+
+    /**
+     * @link https://redis.io/commands/script-exists
+     * @param string ...$sha1
+     * @return list<bool>
+     */
+    public function scriptExists(string ...$sha1): array
+    {
+        return array_map(boolval(...), $this->run('script', 'exists', ...$sha1));
+    }
+
+    /**
+     * @link https://redis.io/commands/script-flush
+     * @return void
+     */
+    public function scriptFlush(): void
+    {
+        $this->run('script', 'flush');
+    }
+
+    /**
+     * @link https://redis.io/commands/script-load
+     * @return string
+     * The SHA1 digest of the script added into the script cache.
+     */
+    public function scriptLoad(string $script): string
+    {
+        return $this->run('script', 'load', $script);
+    }
+
+    # endregion SCRIPT -------------------------------------------------------------------------------------------------
 }
