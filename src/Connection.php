@@ -819,7 +819,7 @@ class Connection
      */
     public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
     {
-        return $this->runRaw('evalsha', $sha1, $numKeys, ...$arg);
+        return $this->run(__FUNCTION__, $sha1, $arg, $numKeys);
     }
 
     /**
