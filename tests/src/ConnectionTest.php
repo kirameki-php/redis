@@ -1046,6 +1046,7 @@ final class ConnectionTest extends TestCase
     public function test_script_flush(): void
     {
         $conn = $this->createExtConnection('main');
+        $conn->scriptFlush(); // try flush nothing
         $sha1_1 = $conn->scriptLoad('return 1');
         $sha1_2 = $conn->scriptLoad('return 2');
         $this->assertSame([true, true, false], $conn->scriptExists($sha1_1, $sha1_2, 'no-such-sha1'));
@@ -1059,6 +1060,14 @@ final class ConnectionTest extends TestCase
         $sha1 = $conn->scriptLoad('return 1');
         $this->assertSame('e0e1f9fabfc9d4800c877a703b823ac0578ff8db', $sha1);
         $this->assertSame(1, $conn->evalSha($sha1));
+    }
+
+    public function test_script_load__bad_script(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage("ERR Error compiling script (new function): user_script:1: malformed number near '1a'");
+        $conn = $this->createExtConnection('main');
+        $conn->scriptLoad('return 1a');
     }
 
     # endregion SCRIPT -------------------------------------------------------------------------------------------------
