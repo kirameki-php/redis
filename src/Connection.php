@@ -607,10 +607,10 @@ class Connection
      *
      * @link https://redis.io/docs/commands/xread
      * @param iterable<string, string> $streams
-     * @param int $count
+     * @param int|null $count
      * Set to a positive integer to limit the number of entries returned.
      * Set to `null` to return all entries.
-     * @param int $blockMilliseconds
+     * @param int|null $blockMilliseconds
      * Set to a positive integer to block for that many milliseconds.
      * Set to `0` to block indefinitely.
      * Set to `null` to return immediately.
