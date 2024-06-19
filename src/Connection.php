@@ -574,7 +574,7 @@ class Connection
      */
     public function xDel(string $key, string ...$id): int
     {
-        return $this->run(__FUNCTION__, $key, ...$id);
+        return $this->run(__FUNCTION__, $key, $id);
     }
 
     /**

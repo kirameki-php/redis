@@ -680,6 +680,19 @@ final class ConnectionTest extends TestCase
         $this->assertSame(24, $conn->xLen('stream'));
     }
 
+    public function test_stream_xDel__multiple_keys(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1, 'b' => 2]);
+        $id2 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id3 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $this->assertSame(3, $conn->xLen('stream'));
+        $this->assertSame(1, $conn->xDel('stream', $id1));
+        $this->assertSame(2, $conn->xLen('stream'));
+        $this->assertSame(2, $conn->xDel('stream', $id3, $id2, $id1));
+        $this->assertSame(0, $conn->xLen('stream'));
+    }
+
     # endregion STREAM -------------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------
