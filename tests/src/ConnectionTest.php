@@ -791,6 +791,19 @@ final class ConnectionTest extends TestCase
         );
     }
 
+    public function test_stream_xTrim(): void
+    {
+        $conn = $this->createExtConnection('main');
+        for($i = 0; $i < 5; $i++) {
+            $conn->xAdd('stream', '*', ['a' => $i]);
+        }
+        $this->assertSame(5, $conn->xLen('stream'));
+        $this->assertSame(2, $conn->xTrim('stream', 3));
+        $this->assertSame(3, $conn->xLen('stream'));
+        $this->assertSame(3, $conn->xTrim('stream', 0));
+        $this->assertSame(0, $conn->xLen('stream'));
+    }
+
     # endregion STREAM -------------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------

@@ -15,6 +15,7 @@ use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
+use Kirameki\Redis\Options\XtrimMode;
 use LogicException;
 use Redis;
 use function array_map;
@@ -642,14 +643,20 @@ class Connection
     /**
      * @link https://redis.io/docs/commands/xtrim
      * @param string $key
-     * @param int $maxLen
+     * @param int|string $threshold
+     * @param int|null $limit
+     * @param XtrimMode $mode
      * @param bool $approximate
      * @return int
      * The number of entries deleted.
      */
-    public function xTrim(string $key, int $maxLen, bool $approximate = false): int
+    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int
     {
-        return $this->run(__FUNCTION__, $key, $maxLen, $approximate);
+        $threshold = (string) $threshold;
+        $minId = $mode === XtrimMode::MinId;
+        return $limit !== null
+            ? $this->run(__FUNCTION__, $key, $threshold, $minId, $approximate, $limit)
+            : $this->run(__FUNCTION__, $key, $threshold, $minId, $approximate);
     }
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
