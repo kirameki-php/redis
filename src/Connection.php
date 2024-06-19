@@ -562,7 +562,7 @@ class Connection
      */
     public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string
     {
-        return $this->run(__FUNCTION__, $key, $id, iterator_to_array($fields), $maxLen, $approximate);
+        return $this->run(__FUNCTION__, $key, $id, iterator_to_array($fields), $maxLen ?? 0, $approximate);
     }
 
     /**

@@ -648,6 +648,40 @@ final class ConnectionTest extends TestCase
 
     # endregion SERVER -------------------------------------------------------------------------------------------------
 
+    # region STREAM ----------------------------------------------------------------------------------------------------
+
+    public function test_stream_xAdd__default(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame('1-0', $conn->xAdd('stream', '1-0', ['a' => 1]));
+        $this->assertMatchesRegularExpression('/\d{10}-\d+/', $conn->xAdd('stream', '*', ['b' => 2]));
+    }
+
+    public function test_stream_xAdd__with_trim(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xAdd('stream', '*', ['a' => 1, 'b' => 2]);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $this->assertSame(4, $conn->xLen('stream'));
+        $conn->xAdd('stream', '*', ['a' => 1], 2);
+        $this->assertSame(2, $conn->xLen('stream'));
+    }
+
+    public function test_stream_xAdd__with_trim_approximate(): void
+    {
+        $conn = $this->createExtConnection('main');
+        for ($i = 0; $i < 123; $i++) {
+            $conn->xAdd('stream', '*', ['a' => 1]);
+        }
+        $this->assertSame(123, $conn->xLen('stream'));
+        $conn->xAdd('stream', '*', ['a' => 1], 3, true);
+        $this->assertSame(24, $conn->xLen('stream'));
+    }
+
+    # endregion STREAM -------------------------------------------------------------------------------------------------
+
     # region STRING ----------------------------------------------------------------------------------------------------
 
     public function test_string_decr(): void
