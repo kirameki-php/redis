@@ -693,6 +693,16 @@ final class ConnectionTest extends TestCase
         $this->assertSame(0, $conn->xLen('stream'));
     }
 
+    public function test_stream_xLen(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(0, $conn->xLen('stream'));
+        $conn->xAdd('stream', '*', ['a' => 1, 'b' => 2]);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $this->assertSame(3, $conn->xLen('stream'));
+    }
+
     # endregion STREAM -------------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------
