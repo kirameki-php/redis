@@ -759,7 +759,7 @@ final class ConnectionTest extends TestCase
         $this->assertSame([$key => [$id1 => ['a' => 1]]], $conn->xRead([$key => '0-0'], 2, 0));
     }
 
-    public function test_stream_xRead__with_blocking_miss(): void
+    public function test_stream_xRead__with_blocking_timeout(): void
     {
         $conn = $this->createExtConnection('main');
         $key = 'stream';
