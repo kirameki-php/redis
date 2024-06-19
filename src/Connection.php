@@ -549,6 +549,109 @@ class Connection
 
     # endregion SERVER -------------------------------------------------------------------------------------------------
 
+    # region STREAM ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/xadd
+     * @param string $key
+     * @param string $id
+     * @param iterable<string, mixed> $fields
+     * @param int|null $maxLen
+     * @param bool $approximate
+     * @return string
+     */
+    public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string
+    {
+        return $this->run(__FUNCTION__, $key, $id, iterator_to_array($fields), $maxLen, $approximate);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xdel
+     * @param string $key
+     * @param string ...$id
+     * @return int
+     * The number of entries deleted.
+     */
+    public function xDel(string $key, string ...$id): int
+    {
+        return $this->run(__FUNCTION__, $key, ...$id);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xlen
+     * @param string $key
+     * @return int
+     */
+    public function xLen(string $key): int
+    {
+        return $this->run(__FUNCTION__, $key);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xrange
+     * @param string $key
+     * @param string $start
+     * @param string $end
+     * @param int|null $count
+     * @return array<string, array<string, mixed>>
+     * A list of stream entries with IDs matching the specified range.
+     */
+    public function xRange(string $key, string $start, string $end, ?int $count = null): array
+    {
+        return $this->run(__FUNCTION__, $key, $start, $end, $count);
+    }
+
+    /**
+     * [!NOTE] When `blockMilliseconds` > 0, the method will return `null` on timeout.
+     * [!WARNING] The process will not respond to any signals until the block timeout is reached.
+     *
+     * @link https://redis.io/docs/commands/xread
+     * @param iterable<string, string> $streams
+     * @param int $count
+     * Set to a positive integer to limit the number of entries returned.
+     * Set to `null` to return all entries.
+     * @param int $blockMilliseconds
+     * Set to a positive integer to block for that many milliseconds.
+     * Set to `0` to block indefinitely.
+     * Set to `null` to return immediately.
+     * @return ($blockMilliseconds is positive-int ? array<string, array<string, mixed>>|null : array<string, array<string, mixed>>)
+     * Returns an array of streams and their entries.
+     * Format: { stream => { id => { field => value, ... }, ... }
+     */
+    public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): ?array
+    {
+        return $this->run(__FUNCTION__, iterator_to_array($streams), $count ?? -1, $blockMilliseconds ?? -1);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xrevrange
+     * @param string $key
+     * @param string $end
+     * @param string $start
+     * @param int|null $count
+     * @return array<string, array<string, mixed>>
+     * A list of stream entries with IDs matching the specified range.
+     */
+    public function xRevRange(string $key, string $end, string $start, ?int $count = null): array
+    {
+        return $this->run(__FUNCTION__, $key, $end, $start, $count ?? -1);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xtrim
+     * @param string $key
+     * @param int $maxLen
+     * @param bool $approximate
+     * @return int
+     * The number of entries deleted.
+     */
+    public function xTrim(string $key, int $maxLen, bool $approximate = false): int
+    {
+        return $this->run(__FUNCTION__, $key, $maxLen, $approximate);
+    }
+
+    # endregion STREAM -------------------------------------------------------------------------------------------------
+
     # region STRING ----------------------------------------------------------------------------------------------------
 
     /**
