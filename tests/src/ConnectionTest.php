@@ -703,6 +703,94 @@ final class ConnectionTest extends TestCase
         $this->assertSame(3, $conn->xLen('stream'));
     }
 
+    public function test_stream_xRange(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1, 'b' => 2]);
+        $id2 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id3 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $this->assertSame(
+            [$id1 => ['a' => 1, 'b' => 2], $id2 => ['a' => 1], $id3 => ['a' => 1]],
+            $conn->xRange('stream', '-', '+'),
+        );
+    }
+
+    public function test_stream_xRange__with_count(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id2 = $conn->xAdd('stream', '*', ['b' => 2]);
+        $id3 = $conn->xAdd('stream', '*', ['c' => 3]);
+        $this->assertSame(
+            [$id1 => ['a' => 1], $id2 => ['b' => 2]],
+            $conn->xRange('stream', '-', '+', 2),
+        );
+    }
+
+    public function test_stream_xRead__default(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $key = 'stream';
+        $id1 = $conn->xAdd($key, '*', ['a' => 1]);
+        $id2 = $conn->xAdd($key, '*', ['b' => 2]);
+        $id3 = $conn->xAdd($key, '*', ['c' => 3]);
+        $this->assertSame(
+            [$key => [$id1 => ['a' => 1], $id2 => ['b' => 2], $id3 => ['c' => 3]]],
+            $conn->xRead([$key => '0-0']),
+        );
+    }
+
+    public function test_stream_xRead__with_count(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $key = 'stream';
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id2 = $conn->xAdd('stream', '*', ['b' => 2]);
+        $id3 = $conn->xAdd('stream', '*', ['c' => 3]);
+        $this->assertSame([$key => [$id1 => ['a' => 1], $id2 => ['b' => 2]]], $conn->xRead([$key => '0-0'], 2));
+        $this->assertSame([$key => [$id3 => ['c' => 3]]], $conn->xRead([$key => $id2], 2));
+    }
+
+    public function test_stream_xRead__with_blocking_hit(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $key = 'stream';
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $this->assertSame([$key => [$id1 => ['a' => 1]]], $conn->xRead([$key => '0-0'], 2, 0));
+    }
+
+    public function test_stream_xRead__with_blocking_miss(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $key = 'stream';
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $this->assertCount(0, $conn->xRead([$key => $id1], 2, 1));
+    }
+
+    public function test_stream_xRevRange(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1, 'b' => 2]);
+        $id2 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id3 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $this->assertSame(
+            [$id3 => ['a' => 1], $id2 => ['a' => 1], $id1 => ['a' => 1, 'b' => 2]],
+            $conn->xRevRange('stream', '+', '-'),
+        );
+    }
+
+    public function test_stream_xRevRange__with_count(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id2 = $conn->xAdd('stream', '*', ['b' => 2]);
+        $id3 = $conn->xAdd('stream', '*', ['c' => 3]);
+        $this->assertSame(
+            [$id3 => ['c' => 3], $id2 => ['b' => 2]],
+            $conn->xRevRange('stream', '+', '-', 2),
+        );
+    }
+
     # endregion STREAM -------------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------

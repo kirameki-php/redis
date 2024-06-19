@@ -593,12 +593,14 @@ class Connection
      * @param string $start
      * @param string $end
      * @param int|null $count
+     * Set to a positive integer to limit the number of entries returned.
+     * Set to `null` to return all entries.
      * @return array<string, array<string, mixed>>
      * A list of stream entries with IDs matching the specified range.
      */
     public function xRange(string $key, string $start, string $end, ?int $count = null): array
     {
-        return $this->run(__FUNCTION__, $key, $start, $end, $count);
+        return $this->run(__FUNCTION__, $key, $start, $end, $count ?? -1);
     }
 
     /**
@@ -614,11 +616,11 @@ class Connection
      * Set to a positive integer to block for that many milliseconds.
      * Set to `0` to block indefinitely.
      * Set to `null` to return immediately.
-     * @return ($blockMilliseconds is positive-int ? array<string, array<string, mixed>>|null : array<string, array<string, mixed>>)
+     * @return array<string, array<string, mixed>>
      * Returns an array of streams and their entries.
      * Format: { stream => { id => { field => value, ... }, ... }
      */
-    public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): ?array
+    public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array
     {
         return $this->run(__FUNCTION__, iterator_to_array($streams), $count ?? -1, $blockMilliseconds ?? -1);
     }
