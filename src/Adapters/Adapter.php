@@ -115,4 +115,22 @@ abstract class Adapter
     abstract public function ping(): bool;
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
+
+    # region GENERIC ---------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/del
+     * @param string ...$key
+     * @return int
+     * Returns the number of keys that were removed.
+     */
+    abstract public function del(string ...$key): int;
+
+    /**
+     * @link https://redis.io/docs/commands/exists
+     * @param string ...$key
+     * @return int
+     */
+    abstract public function exists(string ...$key): int;
+
 }

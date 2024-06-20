@@ -265,10 +265,7 @@ class Connection
      */
     public function del(string ...$key): int
     {
-        if (count($key) === 0) {
-            return 0;
-        }
-        return $this->run(__FUNCTION__, ...$key);
+        return $this->process('del', $key, static fn(Adapter $a) => $a->del(...$key));
     }
 
     /**
@@ -278,10 +275,7 @@ class Connection
      */
     public function exists(string ...$key): int
     {
-        if (count($key) === 0) {
-            return 0;
-        }
-        return $this->run(__FUNCTION__, ...$key);
+        return $this->process('exists', $key, static fn(Adapter $a) => $a->exists(...$key));
     }
 
     /**

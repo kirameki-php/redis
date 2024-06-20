@@ -15,6 +15,7 @@ use RedisException as PhpRedisException;
 use function array_filter;
 use function array_map;
 use function array_sum;
+use function count;
 use function dump;
 use function iterator_to_array;
 use function strlen;
@@ -322,5 +323,26 @@ class ExtensionAdapter extends Adapter
     }
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
+
+    # region GENERIC ---------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    public function del(string ...$key): int
+    {
+        if (count($key) === 0) {
+            return 0;
+        }
+        return $this->run(static fn(Redis $r) => $r->del(...$key));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function exists(string ...$key): int
+    {
+        return $this->run(static fn(Adapter $a) => $a->exists(...$key));
+    }
 
 }
