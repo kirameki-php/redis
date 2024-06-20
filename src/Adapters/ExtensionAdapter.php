@@ -269,7 +269,7 @@ class ExtensionAdapter extends Adapter
      */
     public function clientInfo(): array
     {
-        return $this->run(static fn(Redis $r): array => $r->client('info'));
+        return $this->run(static fn(Redis $r) => $r->client('info'));
     }
 
     /**
@@ -277,7 +277,7 @@ class ExtensionAdapter extends Adapter
      */
     public function clientKill(string $ipAddressAndPort): bool
     {
-        return $this->run(static fn(Redis $r): bool => $r->client('kill', $ipAddressAndPort));
+        return $this->run(static fn(Redis $r) => $r->client('kill', $ipAddressAndPort));
     }
 
     /**
@@ -293,7 +293,7 @@ class ExtensionAdapter extends Adapter
      */
     public function clientGetname(): ?string
     {
-        $result = $this->run(static fn(Redis $r): mixed => $r->client('getname'));
+        $result = $this->run(static fn(Redis $r) => $r->client('getname'));
         return $result !== false ? $result : null;
     }
 
@@ -302,7 +302,7 @@ class ExtensionAdapter extends Adapter
      */
     public function clientSetname(string $name): void
     {
-        $this->run(static fn(Redis $r): bool => $r->client('setname', $name));
+        $this->run(static fn(Redis $r) => $r->client('setname', $name));
     }
 
     /**
@@ -310,7 +310,7 @@ class ExtensionAdapter extends Adapter
      */
     public function echo(string $message): string
     {
-        return $this->run(static fn(Redis $r): string => $r->echo($message));
+        return $this->run(static fn(Redis $r) => $r->echo($message));
     }
 
     /**
@@ -318,7 +318,7 @@ class ExtensionAdapter extends Adapter
      */
     public function ping(): bool
     {
-        return $this->run(static fn(Redis $r): bool => $r->ping());
+        return $this->run(static fn(Redis $r) => $r->ping());
     }
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
