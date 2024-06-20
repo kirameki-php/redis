@@ -15,6 +15,7 @@ use RedisException as PhpRedisException;
 use function array_filter;
 use function array_map;
 use function array_sum;
+use function dump;
 use function iterator_to_array;
 use function strlen;
 use function substr;
@@ -172,41 +173,6 @@ class ExtensionAdapter extends Adapter
     }
 
     /**
-     * @inheritDoc
-     */
-    public function dbSize(): int
-    {
-        return $this->withCatch(function(): int {
-            $nodes = iterator_to_array($this->getClientNodes());
-            $sizes = array_map(static fn(Redis $n): int => $n->dbSize(), $nodes);
-            return array_sum($sizes);
-        });
-    }
-
-    /**
-     * @param string $pattern
-     * @param int $count
-     * @param bool $prefixed
-     * @return Generator<int, string>
-     */
-    public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator
-    {
-        return $this->withCatch(function() use ($pattern, $count, $prefixed): Generator {
-            $prefixLength = strlen($this->config->prefix);
-            foreach ($this->getClientNodes() as $client) {
-                $cursor = null;
-                do {
-                    foreach ($client->scan($cursor, $pattern, $count) ?: [] as $key) {
-                        yield $prefixed
-                            ? $key
-                            : substr($key, $prefixLength);
-                    }
-                } while ($cursor > 0);
-            }
-        });
-    }
-
-    /**
      * @template T
      * @param Closure(): T $callback
      * @return T
@@ -236,4 +202,125 @@ class ExtensionAdapter extends Adapter
         }
         throw new $class($base->getMessage(), $base->getCode(), $root);
     }
+
+    /**
+     * @template T
+     * @param Closure(Redis): T $callback
+     * @return T
+     */
+    protected function run(Closure $callback): mixed
+    {
+        $client = $this->getClient();
+
+        $result = $this->withCatch(static fn() => $callback($client));
+
+        if ($err = $client->getLastError()) {
+            $client->clearLastError();
+            throw new CommandException($err);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function dbSize(): int
+    {
+        return $this->withCatch(function(): int {
+            $nodes = iterator_to_array($this->getClientNodes());
+            $sizes = array_map(static fn(Redis $n): int => $n->dbSize(), $nodes);
+            return array_sum($sizes);
+        });
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator
+    {
+        return $this->withCatch(function() use ($pattern, $count, $prefixed): Generator {
+            $prefixLength = strlen($this->config->prefix);
+            foreach ($this->getClientNodes() as $client) {
+                $cursor = null;
+                do {
+                    foreach ($client->scan($cursor, $pattern, $count) ?: [] as $key) {
+                        yield $prefixed
+                            ? $key
+                            : substr($key, $prefixLength);
+                    }
+                } while ($cursor > 0);
+            }
+        });
+    }
+
+    # region CONNECTION ------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    public function clientId(): int
+    {
+        return $this->run(static fn(Redis $r) => $r->client('id'));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function clientInfo(): array
+    {
+        return $this->run(static fn(Redis $r): array => $r->client('info'));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function clientKill(string $ipAddressAndPort): bool
+    {
+        return $this->run(static fn(Redis $r): bool => $r->client('kill', $ipAddressAndPort));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function clientList(): array
+    {
+        return $this->getClient()->client('list');
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function clientGetname(): ?string
+    {
+        $result = $this->run(static fn(Redis $r): mixed => $r->client('getname'));
+        return $result !== false ? $result : null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function clientSetname(string $name): void
+    {
+        $this->run(static fn(Redis $r): bool => $r->client('setname', $name));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function echo(string $message): string
+    {
+        return $this->run(static fn(Redis $r): string => $r->echo($message));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function ping(): bool
+    {
+        return $this->run(static fn(Redis $r): bool => $r->ping());
+    }
+
+    # endregion CONNECTION ---------------------------------------------------------------------------------------------
+
 }

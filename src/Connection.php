@@ -144,9 +144,7 @@ class Connection
      */
     public function run(string $command, mixed ...$args): mixed
     {
-        return $this->process($command, $args, static function(Adapter $adapter, string $name, array $args) {
-            return $adapter->command($name, $args);
-        });
+        return $this->process($command, $args, static fn(Adapter $a) => $a->command($command, $args));
     }
 
     /**
@@ -156,9 +154,7 @@ class Connection
      */
     public function runRaw(string $command, mixed ...$args): mixed
     {
-        return $this->process($command, $args, static function(Adapter $adapter, string $name, array $args) {
-            return $adapter->rawCommand($name, $args);
-        });
+        return $this->process($command, $args, static fn(Adapter $a) => $a->rawCommand($command, $args));
     }
 
     /**
@@ -184,7 +180,7 @@ class Connection
      */
     public function clientId(): int
     {
-        return $this->run('client', 'id');
+        return $this->process('client', ['id'], static fn(Adapter $a) => $a->clientId());
     }
 
     /**
@@ -193,7 +189,7 @@ class Connection
      */
     public function clientInfo(): array
     {
-        return $this->run('client', 'info');
+        return $this->process('client', ['info'], static fn(Adapter $a) => $a->clientInfo());
     }
 
     /**
@@ -203,7 +199,10 @@ class Connection
      */
     public function clientKill(string $ipAddressAndPort): bool
     {
-        return $this->run('client', 'kill', $ipAddressAndPort);
+        return $this->process(
+            'client', ['kill', $ipAddressAndPort],
+            static fn(Adapter $a) => $a->clientKill($ipAddressAndPort),
+        );
     }
 
     /**
@@ -212,7 +211,7 @@ class Connection
      */
     public function clientList(): array
     {
-        return $this->run('client', 'list');
+        return $this->process('client', ['list'], static fn(Adapter $a) => $a->clientList());
     }
 
     /**
@@ -221,7 +220,7 @@ class Connection
      */
     public function clientGetname(): ?string
     {
-        $result = $this->run('client', 'getname');
+        $result = $this->process('client', ['getname'], static fn(Adapter $a) => $a->clientGetname());
         return $result !== false ? $result : null;
     }
 
@@ -232,7 +231,7 @@ class Connection
      */
     public function clientSetname(string $name): void
     {
-        $this->run('client', 'setname', $name);
+        $this->process('client', ['setname'], static fn(Adapter $a) => $a->clientSetname($name));
     }
 
     /**
@@ -242,7 +241,7 @@ class Connection
      */
     public function echo(string $message): string
     {
-        return $this->run(__FUNCTION__, $message);
+        return $this->process('echo', [$message], static fn(Adapter $a) => $a->echo($message));
     }
 
     /**
@@ -251,7 +250,7 @@ class Connection
      */
     public function ping(): bool
     {
-        return $this->run(__FUNCTION__);
+        return $this->process('ping', [], static fn(Adapter $a) => $a->ping());
     }
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
@@ -551,6 +550,19 @@ class Connection
     # endregion SERVER -------------------------------------------------------------------------------------------------
 
     # region STREAM ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/xack
+     * @param string $key
+     * @param string $group
+     * @param string ...$id
+     * @return int
+     * The number of entries successfully acknowledged.
+     */
+    public function xInfoStream(string $key): array
+    {
+        return $this->run(__FUNCTION__, $key);
+    }
 
     /**
      * @link https://redis.io/docs/commands/xadd

@@ -58,6 +58,9 @@ final class ConnectionTest extends TestCase
             }
         } catch (CommandException $e) {
             throw $e;
+        } catch (\Throwable $e) {
+            dump($e);
+            throw $e;
         } finally {
             $conn->disconnect();
         }
