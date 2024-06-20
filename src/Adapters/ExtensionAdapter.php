@@ -342,7 +342,10 @@ class ExtensionAdapter extends Adapter
      */
     public function exists(string ...$key): int
     {
-        return $this->run(static fn(Adapter $a) => $a->exists(...$key));
+        if (count($key) === 0) {
+            return 0;
+        }
+        return $this->run(static fn(Redis $r) => $r->exists(...$key));
     }
 
 }
