@@ -6,9 +6,11 @@ use DateTimeInterface;
 use Generator;
 use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
+use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use Kirameki\Redis\Options\XtrimMode;
+use function count;
 use function iterator_to_array;
 
 /**
@@ -39,13 +41,6 @@ abstract class Adapter
      * @return bool
      */
     abstract public function isConnected(): bool;
-
-    /**
-     * @param string $name
-     * @param array<mixed> $args
-     * @return mixed
-     */
-    abstract public function command(string $name, array $args): mixed;
 
     /**
      * @param string $name
@@ -263,6 +258,49 @@ abstract class Adapter
 
     # endregion GENERIC ------------------------------------------------------------------------------------------------
 
+    # region LIST ------------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/blpop
+     * @param iterable<string> $keys
+     * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
+     * @return array<string, mixed>|null  Returns null on timeout
+     */
+    abstract public function blPop(iterable $keys, int|float $timeout = 0): ?array;
+
+    /**
+     * @link https://redis.io/docs/commands/lindex
+     * @param string $key
+     * @param int $index  Zero based. Use negative indices to designate elements starting at the tail of the list.
+     * @return mixed|false  The value at index or `false` if... (1) key is missing or (2) index is missing.
+     * @throws CommandException  if key set but is not a list.
+     */
+    abstract public function lIndex(string $key, int $index): mixed;
+
+    /**
+     * Each element is inserted to the head of the list, from the leftmost to the rightmost element.
+     * Ex: `$client->lPush('mylist', 'a', 'b', 'c')` will create a list `["c", "b", "a"]`
+     *
+     * @link https://redis.io/docs/commands/lpush
+     * @param string $key
+     * @param mixed ...$value
+     * @return int  length of the list after the push operation.
+     */
+    abstract public function lPush(string $key, mixed ...$value): int;
+
+    /**
+     * Each element is inserted to the tail of the list, from the leftmost to the rightmost element.
+     * Ex: `$client->rPush('mylist', 'a', 'b', 'c')` will create a list `["a", "b", "c"]`.
+     *
+     * @link https://redis.io/docs/commands/rpush
+     * @param string $key
+     * @param mixed ...$value
+     * @return int  length of the list after the push operation.
+     */
+    abstract public function rPush(string $key, mixed ...$value): int;
+
+    # endregion LIST ---------------------------------------------------------------------------------------------------
+
     # region SERVER ----------------------------------------------------------------------------------------------------
 
     /**
@@ -366,6 +404,118 @@ abstract class Adapter
     abstract public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int;
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
+
+    # region STRING ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/decr
+     * @link https://redis.io/docs/commands/decrby
+     * @param string $key
+     * @param int $by
+     * @return int
+     * The decremented value
+     */
+    abstract public function decr(string $key, int $by = 1): int;
+
+    /**
+     * @link https://redis.io/docs/commands/decrbyfloat
+     * @param string $key
+     * @param float $by
+     * @return float
+     * The decremented value
+     */
+    abstract public function decrByFloat(string $key, float $by): float;
+
+    /**
+     * @link https://redis.io/docs/commands/get
+     * @param string $key
+     * @return mixed|false
+     * `false` if key does not exist.
+     */
+    abstract public function get(string $key): mixed;
+
+    /**
+     * @link https://redis.io/docs/commands/getdel
+     * @param string $key
+     * @return mixed|false
+     * `false` if key does not exist.
+     */
+    abstract public function getDel(string $key): mixed;
+
+    /**
+     * @link https://redis.io/docs/commands/incr
+     * @link https://redis.io/docs/commands/incrby
+     * @param string $key
+     * @param int $by
+     * @return int
+     * The incremented value
+     */
+    abstract public function incr(string $key, int $by = 1): int;
+
+    /**
+     * @link https://redis.io/docs/commands/incrbyfloat
+     * @param string $key
+     * @param float $by
+     * @return float
+     * The incremented value
+     */
+    abstract public function incrByFloat(string $key, float $by): float;
+
+    /**
+     * @link https://redis.io/docs/commands/mget
+     * @param string ...$key
+     * @return array<string, mixed|false>
+     * Returns `[{retrieved_key} => value, ...]`. `false` if key is not found.
+     */
+    abstract public function mGet(string ...$key): array;
+
+    /**
+     * @link https://redis.io/docs/commands/mset
+     * @param iterable<string, mixed> $pairs
+     * @return void
+     */
+    abstract public function mSet(iterable $pairs): void;
+
+    /**
+     * @link https://redis.io/docs/commands/msetnx
+     * @param iterable<string, mixed> $pairs
+     * @return bool
+     */
+    abstract public function mSetNx(iterable $pairs): bool;
+
+    /**
+     * @link https://redis.io/docs/commands/set
+     * @param string $key
+     * The key to set.
+     * @param mixed $value
+     * The value to set. Can be any type when serialization is enabled, can only be scalar type when disabled.
+     * @param SetMode|null $mode
+     * The mode to set the key. Can be `SetMode::Nx` or `SetMode::Xx`. Defaults to `null`.
+     * @param int|null $ex
+     * The number of seconds until the key will expire. Can not be used with `exAt`.
+     * Defaults to `null`.
+     * @param DateTimeInterface|null $exAt
+     * The timestamp when the key will expire. Can not be used with `ex`.
+     * Defaults to `null`.
+     * @param bool $keepTtl
+     * When set to `true`, the key will retain its ttl if key already exists.
+     * Defaults to `false`.
+     * @param bool $get
+     * When set to `true`, the previous value of the key will be returned.
+     * Defaults to `false`.
+     * @return mixed
+     */
+    abstract public function set(
+        string $key,
+        mixed $value,
+        ?SetMode $mode = null,
+        ?int $ex = null,
+        ?DateTimeInterface $exAt = null,
+        bool $keepTtl = false,
+        bool $get = false,
+    ): mixed;
+
+    # endregion STRING -------------------------------------------------------------------------------------------------
 
     # region SCRIPT ----------------------------------------------------------------------------------------------------
 

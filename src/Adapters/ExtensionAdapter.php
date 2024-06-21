@@ -11,6 +11,7 @@ use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\Exceptions\RedisException;
 use Generator;
+use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use Kirameki\Redis\Options\XtrimMode;
@@ -20,14 +21,9 @@ use RedisException as PhpRedisException;
 use function array_filter;
 use function array_map;
 use function array_sum;
-use function assert;
 use function count;
-use function dump;
-use function is_int;
-use function is_null;
 use function iterator_to_array;
 use function strlen;
-use function strtolower;
 use function substr;
 
 /**
@@ -140,23 +136,6 @@ class ExtensionAdapter extends Adapter
         catch (PhpRedisException $e) {
             $this->throwAs(ConnectionException::class, $e);
         }
-    }
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function command(string $name, array $args): mixed
-    {
-        $client = $this->getClient();
-        $result = $this->withCatch(static fn() => $client->$name(...$args));
-
-        if ($err = $client->getLastError()) {
-            $client->clearLastError();
-            throw new CommandException($err);
-        }
-
-        return $result;
     }
 
     /**
@@ -501,6 +480,53 @@ class ExtensionAdapter extends Adapter
 
     # endregion GENERIC ------------------------------------------------------------------------------------------------
 
+    # region LIST ------------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function blPop(iterable $keys, int|float $timeout = 0): ?array
+    {
+        $keys = iterator_to_array($keys);
+
+        /** @var array{ 0?: string, 1?: mixed } $result */
+        $result = $this->run(static fn(Redis $r) => $r->blPop($keys, $timeout));
+
+        return (count($result) > 0)
+            ? [$result[0] => $result[1]]
+            : null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function lIndex(string $key, int $index): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->lIndex($key, $index));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function lPush(string $key, mixed ...$value): int
+    {
+        return $this->run(static fn(Redis $r) => $r->lPush($key, ...$value));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function rPush(string $key, mixed ...$value): int
+    {
+        return $this->run(static fn(Redis $r) => $r->rPush($key, ...$value));
+    }
+
+    # endregion LIST ---------------------------------------------------------------------------------------------------
+
     # region SERVER ----------------------------------------------------------------------------------------------------
 
     /**
@@ -601,6 +627,179 @@ class ExtensionAdapter extends Adapter
     }
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
+
+    # region STRING ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/decr
+     * @link https://redis.io/docs/commands/decrby
+     * @param string $key
+     * @param int $by
+     * @return int
+     * The decremented value
+     */
+    public function decr(string $key, int $by = 1): int
+    {
+        return $by === 1
+            ? $this->run(static fn(Redis $r) => $r->decr($key))
+            : $this->run(static fn(Redis $r) => $r->decrBy($key, $by));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/decrbyfloat
+     * @param string $key
+     * @param float $by
+     * @return float
+     * The decremented value
+     */
+    public function decrByFloat(string $key, float $by): float
+    {
+        return $this->run(static fn(Redis $r) => $r->incrByFloat($key, -$by));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/get
+     * @param string $key
+     * @return mixed|false
+     * `false` if key does not exist.
+     */
+    public function get(string $key): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->get($key));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/getdel
+     * @param string $key
+     * @return mixed|false
+     * `false` if key does not exist.
+     */
+    public function getDel(string $key): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->getDel($key));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/incr
+     * @link https://redis.io/docs/commands/incrby
+     * @param string $key
+     * @param int $by
+     * @return int
+     * The incremented value
+     */
+    public function incr(string $key, int $by = 1): int
+    {
+        return $by === 1
+            ? $this->run(static fn(Redis $r) => $r->incr($key))
+            : $this->run(static fn(Redis $r) => $r->incrBy($key, $by));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/incrbyfloat
+     * @param string $key
+     * @param float $by
+     * @return float
+     * The incremented value
+     */
+    public function incrByFloat(string $key, float $by): float
+    {
+        return $this->run(static fn(Redis $r) => $r->incrByFloat($key, $by));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/mget
+     * @param string ...$key
+     * @return array<string, mixed|false>
+     * Returns `[{retrieved_key} => value, ...]`. `false` if key is not found.
+     */
+    public function mGet(string ...$key): array
+    {
+        if (count($key) === 0) {
+            return [];
+        }
+        $values = $this->run(static fn(Redis $r) => $r->mGet($key));
+        $result = [];
+        $index = 0;
+        foreach ($key as $k) {
+            $result[$k] = $values[$index];
+            ++$index;
+        }
+        return $result;
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/mset
+     * @param iterable<string, mixed> $pairs
+     * @return void
+     */
+    public function mSet(iterable $pairs): void
+    {
+        $this->run(static fn(Redis $r) => $r->mSet(iterator_to_array($pairs)));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/msetnx
+     * @param iterable<string, mixed> $pairs
+     * @return bool
+     */
+    public function mSetNx(iterable $pairs): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->mSetNx(iterator_to_array($pairs)));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/set
+     * @param string $key
+     * The key to set.
+     * @param mixed $value
+     * The value to set. Can be any type when serialization is enabled, can only be scalar type when disabled.
+     * @param SetMode|null $mode
+     * The mode to set the key. Can be `SetMode::Nx` or `SetMode::Xx`. Defaults to `null`.
+     * @param int|null $ex
+     * The number of seconds until the key will expire. Can not be used with `exAt`.
+     * Defaults to `null`.
+     * @param DateTimeInterface|null $exAt
+     * The timestamp when the key will expire. Can not be used with `ex`.
+     * Defaults to `null`.
+     * @param bool $keepTtl
+     * When set to `true`, the key will retain its ttl if key already exists.
+     * Defaults to `false`.
+     * @param bool $get
+     * When set to `true`, the previous value of the key will be returned.
+     * Defaults to `false`.
+     * @return mixed
+     */
+    public function set(
+        string $key,
+        mixed $value,
+        ?SetMode $mode = null,
+        ?int $ex = null,
+        ?DateTimeInterface $exAt = null,
+        bool $keepTtl = false,
+        bool $get = false,
+    ): mixed
+    {
+        $options = [];
+        if ($mode !== null) {
+            $options[] = $mode->value;
+        }
+        if ($ex !== null) {
+            $options['ex'] = $ex;
+        }
+        if ($exAt !== null) {
+            $options['exat'] = $exAt->getTimestamp();
+        }
+        if ($keepTtl) {
+            $options[] = 'keepttl';
+        }
+        if ($get) {
+            $options[] = 'get';
+        }
+
+        return $this->run(static fn(Redis $r) => $r->set($key, $value, $options));
+    }
+
+    # endregion STRING -------------------------------------------------------------------------------------------------
 
     # region SCRIPT ----------------------------------------------------------------------------------------------------
 
