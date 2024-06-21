@@ -3,22 +3,31 @@
 namespace Kirameki\Redis\Adapters;
 
 use Closure;
+use DateTimeInterface;
 use Kirameki\Core\Exceptions\InvalidConfigException;
+use Kirameki\Core\Exceptions\LogicException;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\Exceptions\RedisException;
 use Generator;
+use Kirameki\Redis\Options\TtlMode;
+use Kirameki\Redis\Options\Type;
+use Kirameki\Redis\Options\XtrimMode;
 use Override;
 use Redis;
 use RedisException as PhpRedisException;
 use function array_filter;
 use function array_map;
 use function array_sum;
+use function assert;
 use function count;
 use function dump;
+use function is_int;
+use function is_null;
 use function iterator_to_array;
 use function strlen;
+use function strtolower;
 use function substr;
 
 /**
@@ -139,7 +148,15 @@ class ExtensionAdapter extends Adapter
     #[Override]
     public function command(string $name, array $args): mixed
     {
-        return $this->execCommand($name, $args, false);
+        $client = $this->getClient();
+        $result = $this->withCatch(static fn() => $client->$name(...$args));
+
+        if ($err = $client->getLastError()) {
+            $client->clearLastError();
+            throw new CommandException($err);
+        }
+
+        return $result;
     }
 
     /**
@@ -148,29 +165,7 @@ class ExtensionAdapter extends Adapter
     #[Override]
     public function rawCommand(string $name, array $args): mixed
     {
-        return $this->execCommand($name, $args, true);
-    }
-
-    /**
-     * @param string $name
-     * @param list<mixed> $args
-     * @param bool $raw
-     * @return mixed
-     */
-    protected function execCommand(string $name, array $args, bool $raw): mixed
-    {
-        $client = $this->getClient();
-
-        $result = $raw
-            ? $this->withCatch(static fn() => $client->rawCommand($name, ...$args))
-            : $this->withCatch(static fn() => $client->$name(...$args));
-
-        if ($err = $client->getLastError()) {
-            $client->clearLastError();
-            throw new CommandException($err);
-        }
-
-        return $result;
+        return $this->run(static fn(Redis $r) => $r->rawCommand($name, ...$args));
     }
 
     /**
@@ -207,7 +202,7 @@ class ExtensionAdapter extends Adapter
     /**
      * @template T
      * @param Closure(Redis): T $callback
-     * @return T
+     * @return mixed
      */
     protected function run(Closure $callback): mixed
     {
@@ -223,21 +218,214 @@ class ExtensionAdapter extends Adapter
         return $result;
     }
 
+    # region CONNECTION ------------------------------------------------------------------------------------------------
+
     /**
      * @inheritDoc
      */
-    public function dbSize(): int
+    #[Override]
+    public function clientId(): int
     {
-        return $this->withCatch(function(): int {
-            $nodes = iterator_to_array($this->getClientNodes());
-            $sizes = array_map(static fn(Redis $n): int => $n->dbSize(), $nodes);
-            return array_sum($sizes);
-        });
+        return $this->run(static fn(Redis $r) => $r->client('id'));
     }
 
     /**
      * @inheritDoc
      */
+    #[Override]
+    public function clientInfo(): array
+    {
+        return $this->run(static fn(Redis $r) => $r->client('info'));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function clientKill(string $ipAddressAndPort): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->client('kill', $ipAddressAndPort));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function clientList(): array
+    {
+        return $this->getClient()->client('list');
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function clientGetname(): ?string
+    {
+        $result = $this->run(static fn(Redis $r) => $r->client('getname'));
+        return $result !== false ? $result : null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function clientSetname(string $name): void
+    {
+        $this->run(static fn(Redis $r) => $r->client('setname', $name));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function echo(string $message): string
+    {
+        return $this->run(static fn(Redis $r) => $r->echo($message));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function ping(): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->ping());
+    }
+
+    # endregion CONNECTION ---------------------------------------------------------------------------------------------
+
+    # region GENERIC ---------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function del(string ...$key): int
+    {
+        if (count($key) === 0) {
+            return 0;
+        }
+        return $this->run(static fn(Redis $r) => $r->del(...$key));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function exists(string ...$key): int
+    {
+        if (count($key) === 0) {
+            return 0;
+        }
+        return $this->run(static fn(Redis $r) => $r->exists(...$key));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function expireTime(string $key): int|false|null
+    {
+        $result = $this->run(static fn(Redis $r) => $r->expiretime($key));
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function pExpireTime(string $key): int|false|null
+    {
+        $result = $this->run(static fn(Redis $r) => $r->pexpiretime($key));
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function persist(string $key): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->persist($key));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function expire(string $key, int $seconds, ?TtlMode $mode = null): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->expire($key, $seconds, $mode?->value));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function pExpire(string $key, int $milliseconds, ?TtlMode $mode = null): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->pExpire($key, $milliseconds, $mode?->value));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function expireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->expireAt($key, $time->getTimestamp(), $mode?->value));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function pExpireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->pExpireAt($key, $time->getTimestamp() * 1000, $mode?->value));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function randomKey(): ?string
+    {
+        $result = $this->run(static fn(Redis $r) => $r->randomKey());
+        return $result !== false ? $result : null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function rename(string $srcKey, string $dstKey): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->rename($srcKey, $dstKey));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function renameNx(string $srcKey, string $dstKey): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->renameNx($srcKey, $dstKey));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator
     {
         return $this->withCatch(function() use ($pattern, $count, $prefixed): Generator {
@@ -255,97 +443,229 @@ class ExtensionAdapter extends Adapter
         });
     }
 
-    # region CONNECTION ------------------------------------------------------------------------------------------------
-
     /**
      * @inheritDoc
      */
-    public function clientId(): int
+    #[Override]
+    public function ttl(string $key): int|false|null
     {
-        return $this->run(static fn(Redis $r) => $r->client('id'));
+        $result = $this->run(static fn(Redis $r) => $r->ttl($key));
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
     }
 
     /**
      * @inheritDoc
      */
-    public function clientInfo(): array
+    #[Override]
+    public function pTtl(string $key): int|false|null
     {
-        return $this->run(static fn(Redis $r) => $r->client('info'));
+        $result = $this->run(static fn(Redis $r) => $r->pttl($key));
+        return match($result) {
+            -2 => false,
+            -1 => null,
+            default => $result,
+        };
     }
 
     /**
      * @inheritDoc
      */
-    public function clientKill(string $ipAddressAndPort): bool
+    #[Override]
+    public function type(string $key): Type
     {
-        return $this->run(static fn(Redis $r) => $r->client('kill', $ipAddressAndPort));
+        $type = $this->run(static fn(Redis $r) => $r->type($key));
+        return match ($type) {
+            Redis::REDIS_NOT_FOUND => Type::None,
+            Redis::REDIS_STRING => Type::String,
+            Redis::REDIS_LIST => Type::List,
+            Redis::REDIS_SET => Type::Set,
+            Redis::REDIS_ZSET => Type::ZSet,
+            Redis::REDIS_HASH => Type::Hash,
+            Redis::REDIS_STREAM => Type::Stream,
+            default => throw new LogicException("Unknown Type: $type"),
+        };
     }
 
     /**
      * @inheritDoc
      */
-    public function clientList(): array
+    #[Override]
+    public function unlink(string ...$key): int
     {
-        return $this->getClient()->client('list');
+        return $this->run(static fn(Redis $r) => $r->unlink(...$key));
+    }
+
+    # endregion GENERIC ------------------------------------------------------------------------------------------------
+
+    # region SERVER ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function acl(string $operation, string ...$args): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->acl($operation, ...$args));
     }
 
     /**
      * @inheritDoc
      */
-    public function clientGetname(): ?string
+    #[Override]
+    public function dbSize(): int
     {
-        $result = $this->run(static fn(Redis $r) => $r->client('getname'));
-        return $result !== false ? $result : null;
+        return $this->withCatch(function(): int {
+            $nodes = iterator_to_array($this->getClientNodes());
+            $sizes = array_map(static fn(Redis $n): int => $n->dbSize(), $nodes);
+            return array_sum($sizes);
+        });
+    }
+
+    # endregion SERVER ----------------------------------------------------------------------------------------------------
+
+    # region STREAM ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string
+    {
+        $_fields = iterator_to_array($fields);
+        $_maxLen = $maxLen ?? 0;
+        return $this->run(static fn(Redis $r) => $r->xAdd($key, $id, $_fields, $_maxLen, $approximate));
     }
 
     /**
      * @inheritDoc
      */
-    public function clientSetname(string $name): void
+    #[Override]
+    public function xDel(string $key, string ...$id): int
     {
-        $this->run(static fn(Redis $r) => $r->client('setname', $name));
+        return $this->run(static fn(Redis $r) => $r->xDel($key, $id));
     }
 
     /**
      * @inheritDoc
      */
-    public function echo(string $message): string
+    #[Override]
+    public function xLen(string $key): int
     {
-        return $this->run(static fn(Redis $r) => $r->echo($message));
+        return $this->run(static fn(Redis $r) => $r->xLen($key));
     }
 
     /**
      * @inheritDoc
      */
-    public function ping(): bool
+    #[Override]
+    public function xRange(string $key, string $start, string $end, ?int $count = null): array
     {
-        return $this->run(static fn(Redis $r) => $r->ping());
-    }
-
-    # endregion CONNECTION ---------------------------------------------------------------------------------------------
-
-    # region GENERIC ---------------------------------------------------------------------------------------------------
-
-    /**
-     * @inheritDoc
-     */
-    public function del(string ...$key): int
-    {
-        if (count($key) === 0) {
-            return 0;
-        }
-        return $this->run(static fn(Redis $r) => $r->del(...$key));
+        return $this->run(static fn(Redis $r) => $r->xRange($key, $start, $end, $count ?? -1));
     }
 
     /**
      * @inheritDoc
      */
-    public function exists(string ...$key): int
+    #[Override]
+    public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array
     {
-        if (count($key) === 0) {
-            return 0;
-        }
-        return $this->run(static fn(Redis $r) => $r->exists(...$key));
+        $_streams = iterator_to_array($streams);
+        $_count = $count ?? -1;
+        $_blockMilliseconds = $blockMilliseconds ?? -1;
+        return $this->run(static fn(Redis $r) => $r->xRead($_streams, $_count, $_blockMilliseconds));
     }
 
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xRevRange(string $key, string $end, string $start, ?int $count = null): array
+    {
+        return $this->run(static fn(Redis $r) => $r->xRevRange($key, $end, $start, $count ?? -1));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int
+    {
+        $threshold = (string) $threshold;
+        $minId = $mode === XtrimMode::MinId;
+        $limit ??= -1;
+        return $this->run(static fn(Redis $r) => $r->xTrim($key, $threshold, $approximate, $minId, $limit));
+    }
+
+    # endregion STREAM -------------------------------------------------------------------------------------------------
+
+    # region SCRIPT ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->eval($script, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->eval_ro($script, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->evalSha($sha1, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->evalsha_ro($sha1, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function scriptExists(string ...$sha1): array
+    {
+        return array_map(boolval(...), $this->run(static fn(Redis $r) => $r->script('exists', ...$sha1)));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function scriptFlush(): void
+    {
+        $this->run(static fn(Redis $r) => $r->script('flush'));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function scriptLoad(string $script): string
+    {
+        return $this->run(static fn(Redis $r) => $r->script('load', $script));
+    }
+
+    # endregion SCRIPT ----------------------------------------------------------------------------------------------------
 }

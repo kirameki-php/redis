@@ -21,10 +21,9 @@ use Redis;
 use function array_map;
 use function count;
 use function dump;
-use function func_get_args;
+use function func_get_args as args;
 use function hrtime;
 use function iterator_to_array;
-use function strtolower;
 
 /**
  * HASHES --------------------------------------------------------------------------------------------------------------
@@ -149,16 +148,6 @@ class Connection
 
     /**
      * @param string $command
-     * @param mixed ...$args
-     * @return mixed
-     */
-    public function runRaw(string $command, mixed ...$args): mixed
-    {
-        return $this->process($command, $args, static fn(Adapter $a) => $a->rawCommand($command, $args));
-    }
-
-    /**
-     * @param string $command
      * @param array<mixed> $args
      * @param Closure(Adapter<ConnectionConfig>, string, array<int, mixed>): mixed $callback
      * @return mixed
@@ -265,7 +254,7 @@ class Connection
      */
     public function del(string ...$key): int
     {
-        return $this->process('del', $key, static fn(Adapter $a) => $a->del(...$key));
+        return $this->process(__FUNCTION__, $key, static fn(Adapter $a) => $a->del(...$key));
     }
 
     /**
@@ -275,7 +264,7 @@ class Connection
      */
     public function exists(string ...$key): int
     {
-        return $this->process('exists', $key, static fn(Adapter $a) => $a->exists(...$key));
+        return $this->process(__FUNCTION__, $key, static fn(Adapter $a) => $a->exists(...$key));
     }
 
     /**
@@ -288,12 +277,7 @@ class Connection
      */
     public function expireTime(string $key): int|false|null
     {
-        $result = $this->run(strtolower(__FUNCTION__), $key);
-        return match($result) {
-            -2 => false,
-            -1 => null,
-            default => $result,
-        };
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->expireTime($key));
     }
 
     /**
@@ -306,12 +290,7 @@ class Connection
      */
     public function pExpireTime(string $key): int|false|null
     {
-        $result = $this->run(strtolower(__FUNCTION__), $key);
-        return match($result) {
-            -2 => false,
-            -1 => null,
-            default => $result,
-        };
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->pExpireTime($key));
     }
 
     /**
@@ -321,7 +300,7 @@ class Connection
      */
     public function persist(string $key): bool
     {
-        return $this->run(__FUNCTION__, $key);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->persist($key));
     }
 
     /**
@@ -333,7 +312,7 @@ class Connection
      */
     public function expire(string $key, int $seconds, ?TtlMode $mode = null): bool
     {
-        return $this->run(__FUNCTION__, $key, $seconds, $mode?->value);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->expire($key, $seconds, $mode));
     }
 
     /**
@@ -345,7 +324,7 @@ class Connection
      */
     public function pExpire(string $key, int $milliseconds, ?TtlMode $mode = null): bool
     {
-        return $this->run('pexpire', $key, $milliseconds, $mode?->value);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->pExpire($key, $milliseconds, $mode));
     }
 
     /**
@@ -357,7 +336,7 @@ class Connection
      */
     public function expireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
     {
-        return $this->run(__FUNCTION__, $key, $time->getTimestamp(), $mode?->value);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->expireAt($key, $time, $mode),);
     }
 
     /**
@@ -369,7 +348,7 @@ class Connection
      */
     public function pExpireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
     {
-        return $this->run('pexpireAt', $key, $time->getTimestamp() * 1000, $mode?->value);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->pExpireAt($key, $time, $mode));
     }
 
     /**
@@ -379,8 +358,7 @@ class Connection
      */
     public function randomKey(): ?string
     {
-        $result = $this->run(__FUNCTION__);
-        return $result !== false ? $result : null;
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->randomKey());
     }
 
     /**
@@ -394,7 +372,7 @@ class Connection
      */
     public function rename(string $srcKey, string $dstKey): bool
     {
-        return $this->run(__FUNCTION__, $srcKey, $dstKey);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->rename($srcKey, $dstKey));
     }
 
     /**
@@ -408,7 +386,7 @@ class Connection
      */
     public function renameNx(string $srcKey, string $dstKey): bool
     {
-        return $this->run(__FUNCTION__, $srcKey, $dstKey);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->renameNx($srcKey, $dstKey));
     }
 
     /**
@@ -445,12 +423,7 @@ class Connection
      */
     public function ttl(string $key): int|false|null
     {
-        $result = $this->run(__FUNCTION__, $key);
-        return match($result) {
-            -2 => false,
-            -1 => null,
-            default => $result,
-        };
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->ttl($key));
     }
 
     /**
@@ -463,12 +436,7 @@ class Connection
      */
     public function pTtl(string $key): int|false|null
     {
-        $result = $this->run(__FUNCTION__, $key);
-        return match($result) {
-            -2 => false,
-            -1 => null,
-            default => $result,
-        };
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->pTtl($key));
     }
 
     /**
@@ -478,17 +446,7 @@ class Connection
      */
     public function type(string $key): Type
     {
-        $type = $this->run(__FUNCTION__, $key);
-        return match ($type) {
-            Redis::REDIS_NOT_FOUND => Type::None,
-            Redis::REDIS_STRING => Type::String,
-            Redis::REDIS_LIST => Type::List,
-            Redis::REDIS_SET => Type::Set,
-            Redis::REDIS_ZSET => Type::ZSet,
-            Redis::REDIS_HASH => Type::Hash,
-            Redis::REDIS_STREAM => Type::Stream,
-            default => throw new LogicException("Unknown Type: $type"),
-        };
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->type($key));
     }
 
     /**
@@ -498,7 +456,7 @@ class Connection
      */
     public function unlink(string ...$key): int
     {
-        return $this->run(__FUNCTION__, ...$key);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->unlink(...$key));
     }
 
     # endregion GENERIC ------------------------------------------------------------------------------------------------
@@ -513,7 +471,7 @@ class Connection
      */
     public function acl(string $operation, string ...$args): mixed
     {
-        return $this->run(__FUNCTION__, $operation, ...$args);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->acl($operation, ...$args));
     }
 
     /**
@@ -546,19 +504,6 @@ class Connection
     # region STREAM ----------------------------------------------------------------------------------------------------
 
     /**
-     * @link https://redis.io/docs/commands/xack
-     * @param string $key
-     * @param string $group
-     * @param string ...$id
-     * @return int
-     * The number of entries successfully acknowledged.
-     */
-    public function xInfoStream(string $key): array
-    {
-        return $this->run(__FUNCTION__, $key);
-    }
-
-    /**
      * @link https://redis.io/docs/commands/xadd
      * @param string $key
      * @param string $id
@@ -569,7 +514,7 @@ class Connection
      */
     public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string
     {
-        return $this->run(__FUNCTION__, $key, $id, iterator_to_array($fields), $maxLen ?? 0, $approximate);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->xAdd($key, $id, $fields, $maxLen, $approximate));
     }
 
     /**
@@ -581,7 +526,7 @@ class Connection
      */
     public function xDel(string $key, string ...$id): int
     {
-        return $this->run(__FUNCTION__, $key, $id);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->xDel($key, ...$id));
     }
 
     /**
@@ -591,7 +536,7 @@ class Connection
      */
     public function xLen(string $key): int
     {
-        return $this->run(__FUNCTION__, $key);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->xLen($key));
     }
 
     /**
@@ -607,7 +552,7 @@ class Connection
      */
     public function xRange(string $key, string $start, string $end, ?int $count = null): array
     {
-        return $this->run(__FUNCTION__, $key, $start, $end, $count ?? -1);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->xRange($key, $start, $end, $count));
     }
 
     /**
@@ -629,7 +574,7 @@ class Connection
      */
     public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array
     {
-        return $this->run(__FUNCTION__, iterator_to_array($streams), $count ?? -1, $blockMilliseconds ?? -1);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->xRead($streams, $count, $blockMilliseconds));
     }
 
     /**
@@ -643,7 +588,7 @@ class Connection
      */
     public function xRevRange(string $key, string $end, string $start, ?int $count = null): array
     {
-        return $this->run(__FUNCTION__, $key, $end, $start, $count ?? -1);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->xRevRange($key, $end, $start, $count));
     }
 
     /**
@@ -913,11 +858,11 @@ class Connection
      */
     public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed
     {
-        return $this->run(__FUNCTION__, $script, $arg, $numKeys);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->eval($script, $numKeys, ...$arg));
     }
 
     /**
-     * @link https://redis.io/commands/evalsha_ro
+     * @link https://redis.io/commands/eval_ro
      * @param string $script
      * @param int $numKeys
      * @param int|string ...$arg
@@ -925,7 +870,7 @@ class Connection
      */
     public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed
     {
-        return $this->runRaw('eval_ro', $script, $numKeys, ...$arg);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalRo($script, $numKeys, ...$arg));
     }
 
     /**
@@ -937,7 +882,7 @@ class Connection
      */
     public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
     {
-        return $this->run(__FUNCTION__, $sha1, $arg, $numKeys);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalSha($sha1, $numKeys, ...$arg));
     }
 
     /**
@@ -949,7 +894,7 @@ class Connection
      */
     public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
     {
-        return $this->runRaw('evalsha_ro', $sha1, $numKeys, ...$arg);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalShaRo($sha1, $numKeys, ...$arg));
     }
 
     /**
@@ -968,7 +913,7 @@ class Connection
      */
     public function scriptFlush(): void
     {
-        $this->run('script', 'flush');
+        $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptFlush());
     }
 
     /**
@@ -978,7 +923,7 @@ class Connection
      */
     public function scriptLoad(string $script): string
     {
-        return $this->run('script', 'load', $script);
+        return $this->process(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptLoad($script));
     }
 
     # endregion SCRIPT -------------------------------------------------------------------------------------------------
