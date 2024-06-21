@@ -10,8 +10,6 @@ use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use Kirameki\Redis\Options\XtrimMode;
-use function count;
-use function iterator_to_array;
 
 /**
  * @template TConnectionConfig of ConnectionConfig
