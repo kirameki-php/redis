@@ -299,6 +299,66 @@ abstract class Adapter
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
 
+    # region SCRIPT ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/commands/eval
+     * @param string $script
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    abstract public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed;
+
+    /**
+     * @link https://redis.io/commands/evalsha_ro
+     * @param string $script
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    abstract public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed;
+
+    /**
+     * @link https://redis.io/commands/evalsha
+     * @param string $sha1
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    abstract public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
+
+    /**
+     * @link https://redis.io/commands/evalsha_ro
+     * @param string $sha1
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    abstract public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
+
+    /**
+     * @link https://redis.io/commands/script-exists
+     * @param string ...$sha1
+     * @return list<bool>
+     */
+    abstract public function scriptExists(string ...$sha1): array;
+
+    /**
+     * @link https://redis.io/commands/script-flush
+     * @return void
+     */
+    abstract public function scriptFlush(): void;
+
+    /**
+     * @link https://redis.io/commands/script-load
+     * @return string
+     * The SHA1 digest of the script added into the script cache.
+     */
+    abstract public function scriptLoad(string $script): string;
+
+    # endregion SCRIPT -------------------------------------------------------------------------------------------------
+
     # region SERVER ----------------------------------------------------------------------------------------------------
 
     /**
@@ -514,64 +574,4 @@ abstract class Adapter
     ): mixed;
 
     # endregion STRING -------------------------------------------------------------------------------------------------
-
-    # region SCRIPT ----------------------------------------------------------------------------------------------------
-
-    /**
-     * @link https://redis.io/commands/eval
-     * @param string $script
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    abstract public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed;
-
-    /**
-     * @link https://redis.io/commands/evalsha_ro
-     * @param string $script
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    abstract public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed;
-
-    /**
-     * @link https://redis.io/commands/evalsha
-     * @param string $sha1
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    abstract public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
-
-    /**
-     * @link https://redis.io/commands/evalsha_ro
-     * @param string $sha1
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    abstract public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
-
-    /**
-     * @link https://redis.io/commands/script-exists
-     * @param string ...$sha1
-     * @return list<bool>
-     */
-    abstract public function scriptExists(string ...$sha1): array;
-
-    /**
-     * @link https://redis.io/commands/script-flush
-     * @return void
-     */
-    abstract public function scriptFlush(): void;
-
-    /**
-     * @link https://redis.io/commands/script-load
-     * @return string
-     * The SHA1 digest of the script added into the script cache.
-     */
-    abstract public function scriptLoad(string $script): string;
-
-    # endregion SCRIPT -------------------------------------------------------------------------------------------------
 }

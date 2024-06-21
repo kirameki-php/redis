@@ -502,6 +502,88 @@ class Connection
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
 
+    # region SCRIPT ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/commands/eval
+     * @param string $script
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->eval($script, $numKeys, ...$arg));
+    }
+
+    /**
+     * @link https://redis.io/commands/eval_ro
+     * @param string $script
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalRo($script, $numKeys, ...$arg));
+    }
+
+    /**
+     * @link https://redis.io/commands/evalsha
+     * @param string $sha1
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalSha($sha1, $numKeys, ...$arg));
+    }
+
+    /**
+     * @link https://redis.io/commands/evalsha_ro
+     * @param string $sha1
+     * @param int $numKeys
+     * @param int|string ...$arg
+     * @return mixed
+     */
+    public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalShaRo($sha1, $numKeys, ...$arg));
+    }
+
+    /**
+     * @link https://redis.io/commands/script-exists
+     * @param string ...$sha1
+     * @return list<bool>
+     */
+    public function scriptExists(string ...$sha1): array
+    {
+        $result = $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptExists(...$sha1));
+        return array_map(boolval(...), $result);
+    }
+
+    /**
+     * @link https://redis.io/commands/script-flush
+     * @return void
+     */
+    public function scriptFlush(): void
+    {
+        $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptFlush());
+    }
+
+    /**
+     * @link https://redis.io/commands/script-load
+     * @return string
+     * The SHA1 digest of the script added into the script cache.
+     */
+    public function scriptLoad(string $script): string
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptLoad($script));
+    }
+
+    # endregion SCRIPT -------------------------------------------------------------------------------------------------
+
     # region SERVER ----------------------------------------------------------------------------------------------------
 
     /**
@@ -790,86 +872,4 @@ class Connection
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------
-
-    # region SCRIPT ----------------------------------------------------------------------------------------------------
-
-    /**
-     * @link https://redis.io/commands/eval
-     * @param string $script
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->eval($script, $numKeys, ...$arg));
-    }
-
-    /**
-     * @link https://redis.io/commands/eval_ro
-     * @param string $script
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalRo($script, $numKeys, ...$arg));
-    }
-
-    /**
-     * @link https://redis.io/commands/evalsha
-     * @param string $sha1
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalSha($sha1, $numKeys, ...$arg));
-    }
-
-    /**
-     * @link https://redis.io/commands/evalsha_ro
-     * @param string $sha1
-     * @param int $numKeys
-     * @param int|string ...$arg
-     * @return mixed
-     */
-    public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->evalShaRo($sha1, $numKeys, ...$arg));
-    }
-
-    /**
-     * @link https://redis.io/commands/script-exists
-     * @param string ...$sha1
-     * @return list<bool>
-     */
-    public function scriptExists(string ...$sha1): array
-    {
-        $result = $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptExists(...$sha1));
-        return array_map(boolval(...), $result);
-    }
-
-    /**
-     * @link https://redis.io/commands/script-flush
-     * @return void
-     */
-    public function scriptFlush(): void
-    {
-        $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptFlush());
-    }
-
-    /**
-     * @link https://redis.io/commands/script-load
-     * @return string
-     * The SHA1 digest of the script added into the script cache.
-     */
-    public function scriptLoad(string $script): string
-    {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptLoad($script));
-    }
-
-    # endregion SCRIPT -------------------------------------------------------------------------------------------------
 }

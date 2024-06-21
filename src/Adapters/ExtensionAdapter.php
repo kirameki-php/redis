@@ -527,6 +527,73 @@ class ExtensionAdapter extends Adapter
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
 
+    # region SCRIPT ----------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->eval($script, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->eval_ro($script, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->evalSha($sha1, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->evalsha_ro($sha1, $arg, $numKeys));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function scriptExists(string ...$sha1): array
+    {
+        return array_map(boolval(...), $this->run(static fn(Redis $r) => $r->script('exists', ...$sha1)));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function scriptFlush(): void
+    {
+        $this->run(static fn(Redis $r) => $r->script('flush'));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function scriptLoad(string $script): string
+    {
+        return $this->run(static fn(Redis $r) => $r->script('load', $script));
+    }
+
+    # endregion SCRIPT ----------------------------------------------------------------------------------------------------
+
     # region SERVER ----------------------------------------------------------------------------------------------------
 
     /**
@@ -802,70 +869,4 @@ class ExtensionAdapter extends Adapter
 
     # endregion STRING -------------------------------------------------------------------------------------------------
 
-    # region SCRIPT ----------------------------------------------------------------------------------------------------
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(static fn(Redis $r) => $r->eval($script, $arg, $numKeys));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(static fn(Redis $r) => $r->eval_ro($script, $arg, $numKeys));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(static fn(Redis $r) => $r->evalSha($sha1, $arg, $numKeys));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed
-    {
-        return $this->run(static fn(Redis $r) => $r->evalsha_ro($sha1, $arg, $numKeys));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function scriptExists(string ...$sha1): array
-    {
-        return array_map(boolval(...), $this->run(static fn(Redis $r) => $r->script('exists', ...$sha1)));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function scriptFlush(): void
-    {
-        $this->run(static fn(Redis $r) => $r->script('flush'));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    #[Override]
-    public function scriptLoad(string $script): string
-    {
-        return $this->run(static fn(Redis $r) => $r->script('load', $script));
-    }
-
-    # endregion SCRIPT ----------------------------------------------------------------------------------------------------
 }
