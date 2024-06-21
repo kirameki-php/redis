@@ -622,8 +622,9 @@ class ExtensionAdapter extends Adapter
     {
         $threshold = (string) $threshold;
         $minId = $mode === XtrimMode::MinId;
-        $limit ??= -1;
-        return $this->run(static fn(Redis $r) => $r->xTrim($key, $threshold, $approximate, $minId, $limit));
+        return $limit === null
+            ? $this->run(static fn(Redis $r) => $r->xTrim($key, $threshold, $approximate, $minId))
+            : $this->run(static fn(Redis $r) => $r->xTrim($key, $threshold, $approximate, $minId, $limit));
     }
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
