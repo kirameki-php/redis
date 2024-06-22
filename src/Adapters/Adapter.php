@@ -391,6 +391,17 @@ interface Adapter
     public function xDel(string $key, string ...$id): int;
 
     /**
+     * @link https://redis.io/docs/commands/xinfo-stream
+     * @param string $key
+     * @param bool $full
+     * @param int|null $count
+     * limit the number of stream and PEL entries that are returned.
+     * The default COUNT is 10 and COUNT of 0 means all entries will be returned.
+     * @return array<string, mixed>
+     */
+    public function xInfoStream(string $key, bool $full = false, ?int $count = null): array;
+
+    /**
      * @link https://redis.io/docs/commands/xlen
      * @param string $key
      * @return int

@@ -5,12 +5,14 @@ namespace Tests\Kirameki\Redis;
 use DateTimeImmutable;
 use Kirameki\Collections\Utils\Arr;
 use Kirameki\Collections\Vec;
+use Kirameki\Core\Exceptions\ErrorException;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
+use PHPUnit\Framework\Attributes\WithoutErrorHandler;
 use Redis;
 use stdClass;
 use function array_keys;
@@ -694,6 +696,56 @@ final class ConnectionTest extends TestCase
         $this->assertSame(2, $conn->xLen('stream'));
         $this->assertSame(2, $conn->xDel('stream', $id3, $id2, $id1));
         $this->assertSame(0, $conn->xLen('stream'));
+    }
+
+    public function test_stream_xInfoStream__default(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $info = $conn->xInfoStream('stream');
+        $this->assertSame(2, $info['length']);
+        $this->assertSame(1, $info['radix-tree-keys']);
+        $this->assertSame(2, $info['radix-tree-nodes']);
+        $this->assertSame(0, $info['groups']);
+        $this->assertArrayHasKey('first-entry', $info);
+        $this->assertArrayHasKey('last-entry', $info);
+    }
+
+    #[WithoutErrorHandler]
+    public function test_stream_xInfoStream__count(): void
+    {
+        $this->throwOnError();
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('Redis::xinfo(): Cannot pass a non-null optional argument after a NULL one.');
+        $conn = $this->createExtConnection('main');
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $info = $conn->xInfoStream('stream', false, 1);
+    }
+
+    public function test_stream_xInfoStream__full(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $info = $conn->xInfoStream('stream', true);
+        $this->assertSame(2, $info['length']);
+        $this->assertSame(1, $info['radix-tree-keys']);
+        $this->assertSame(2, $info['radix-tree-nodes']);
+        $this->assertCount(2, $info['entries']);
+    }
+
+    public function test_stream_xInfoStream__full_count(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $info = $conn->xInfoStream('stream', true, 1);
+        $this->assertSame(2, $info['length']);
+        $this->assertSame(1, $info['radix-tree-keys']);
+        $this->assertSame(2, $info['radix-tree-nodes']);
+        $this->assertCount(1, $info['entries']);
     }
 
     public function test_stream_xLen(): void

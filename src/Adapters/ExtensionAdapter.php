@@ -655,6 +655,15 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
+    public function xInfoStream(string $key, bool $full = false, ?int $count = null): array
+    {
+        return $this->run(static fn(Redis $r) => $r->xInfo('STREAM', $key, $full ? 'FULL' : null, $count ?? -1));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function xLen(string $key): int
     {
         return $this->run(static fn(Redis $r) => $r->xLen($key));
