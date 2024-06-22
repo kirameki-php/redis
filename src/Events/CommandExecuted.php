@@ -2,19 +2,19 @@
 
 namespace Kirameki\Redis\Events;
 
-use Kirameki\Redis\Connection;
+use Kirameki\Redis\RedisConnection;
 
 class CommandExecuted extends RedisEvent
 {
     /**
-     * @param Connection $connection
+     * @param RedisConnection $connection
      * @param string $command
      * @param array<mixed> $args
      * @param mixed $result
      * @param float $elapsedMs
      */
     public function __construct(
-        Connection $connection,
+        RedisConnection $connection,
         public readonly string $command,
         public readonly array $args,
         public readonly mixed $result,

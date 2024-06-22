@@ -3,15 +3,15 @@
 namespace Kirameki\Redis\Events;
 
 use Kirameki\Event\Event;
-use Kirameki\Redis\Connection;
+use Kirameki\Redis\RedisConnection;
 
 abstract class RedisEvent extends Event
 {
     /**
-     * @param Connection $connection
+     * @param RedisConnection $connection
      */
     public function __construct(
-        public readonly Connection $connection,
+        public readonly RedisConnection $connection,
     )
     {
     }

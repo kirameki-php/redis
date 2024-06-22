@@ -16,7 +16,7 @@ use function array_key_exists;
 class RedisManager
 {
     /**
-     * @var array<string, Connection>
+     * @var array<string, RedisConnection>
      */
     protected array $connections = [];
 
@@ -44,34 +44,34 @@ class RedisManager
 
     /**
      * @param string $name
-     * @return Connection
+     * @return RedisConnection
      */
-    public function use(string $name): Connection
+    public function use(string $name): RedisConnection
     {
         return $this->connections[$name] ??= $this->createConnection($name);
     }
 
     /**
-     * @return Connection
+     * @return RedisConnection
      */
-    public function useDefault(): Connection
+    public function useDefault(): RedisConnection
     {
         return $this->use($this->default);
     }
 
     /**
      * @param string $name
-     * @return Connection
+     * @return RedisConnection
      */
-    protected function createConnection(string $name): Connection
+    protected function createConnection(string $name): RedisConnection
     {
         $config = $this->getConfig($name);
         $resolver = $this->getAdapterResolver($config->getAdapterName());
-        return new Connection($name, $resolver($config), $this->events);
+        return new RedisConnection($name, $resolver($config), $this->events);
     }
 
     /**
-     * @return Map<string, Connection>
+     * @return Map<string, RedisConnection>
      */
     public function resolvedConnections(): Map
     {

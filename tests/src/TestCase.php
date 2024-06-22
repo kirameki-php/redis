@@ -6,7 +6,7 @@ use Kirameki\Core\Testing\TestCase as BaseTestCase;
 use Kirameki\Event\EventManager;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
-use Kirameki\Redis\Connection;
+use Kirameki\Redis\RedisConnection;
 use Kirameki\Redis\RedisManager;
 use Redis;
 
@@ -22,7 +22,7 @@ abstract class TestCase extends BaseTestCase
         return $this->redis ??= new RedisManager(new EventManager(), new RedisConfig(default: 'main'));
     }
 
-    public function createExtConnection(string $name, ?ExtensionConfig $config = null): Connection
+    public function createExtConnection(string $name, ?ExtensionConfig $config = null): RedisConnection
     {
         $redis = $this->createManager();
         $redis->setConnectionConfig($name, $config ?? new ExtensionConfig('redis'));

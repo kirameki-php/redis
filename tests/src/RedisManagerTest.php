@@ -5,7 +5,7 @@ namespace Tests\Kirameki\Redis;
 use Kirameki\Event\EventManager;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
-use Kirameki\Redis\Connection;
+use Kirameki\Redis\RedisConnection;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\RedisManager;
 use LogicException;
@@ -38,7 +38,7 @@ final class RedisManagerTest extends TestCase
     public function test_use__main(): void
     {
         $this->createExtConnection('main');
-        $this->assertInstanceOf(Connection::class, $this->createManager()->use('main'));
+        $this->assertInstanceOf(RedisConnection::class, $this->createManager()->use('main'));
     }
 
     #[WithoutErrorHandler]
@@ -60,7 +60,7 @@ final class RedisManagerTest extends TestCase
     public function test_useDefault(): void
     {
         $this->createExtConnection('main');
-        $this->assertInstanceOf(Connection::class, $this->createManager()->useDefault());
+        $this->assertInstanceOf(RedisConnection::class, $this->createManager()->useDefault());
     }
 
     public function test_purge(): void

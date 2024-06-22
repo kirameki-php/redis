@@ -70,7 +70,7 @@ use function iterator_to_array;
  * - TIME: doesn't work when using cluster of servers
  * - MOVE: not supported in cluster mode
  */
-class Connection
+class RedisConnection
 {
     /**
      * @template TConnectionConfig of ConnectionConfig

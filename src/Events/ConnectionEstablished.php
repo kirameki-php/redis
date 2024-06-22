@@ -2,15 +2,15 @@
 
 namespace Kirameki\Redis\Events;
 
-use Kirameki\Redis\Connection;
+use Kirameki\Redis\RedisConnection;
 
 class ConnectionEstablished extends RedisEvent
 {
     /**
-     * @param Connection $connection
+     * @param RedisConnection $connection
      */
     public function __construct(
-        Connection $connection,
+        RedisConnection $connection,
     )
     {
         parent::__construct($connection);
