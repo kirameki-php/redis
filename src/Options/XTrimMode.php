@@ -2,7 +2,7 @@
 
 namespace Kirameki\Redis\Options;
 
-enum XtrimMode: string
+enum XTrimMode: string
 {
     case MaxLen = 'MAXLEN';
     case MinId = 'MINID';

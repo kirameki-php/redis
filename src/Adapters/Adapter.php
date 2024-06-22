@@ -9,7 +9,9 @@ use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
-use Kirameki\Redis\Options\XtrimMode;
+use Kirameki\Redis\Options\XClaimOption;
+use Kirameki\Redis\Options\XTrimMode;
+use function func_get_args as args;
 
 /**
  * @template TConnectionConfig of ConnectionConfig
@@ -251,11 +253,11 @@ interface Adapter
 
     /**
      * @link https://redis.io/docs/commands/blpop
-     * @param iterable<string> $keys
+     * @param list<string> $keys
      * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
      * @return array<string, mixed>|null  Returns null on timeout
      */
-    public function blPop(iterable $keys, int|float $timeout = 0): ?array;
+    public function blPop(array $keys, int|float $timeout = 0): ?array;
 
     /**
      * @link https://redis.io/docs/commands/lindex
@@ -374,12 +376,23 @@ interface Adapter
      * @link https://redis.io/docs/commands/xadd
      * @param string $key
      * @param string $id
-     * @param iterable<string, mixed> $fields
+     * @param array<string, mixed> $fields
      * @param int|null $maxLen
      * @param bool $approximate
      * @return string
      */
-    public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string;
+    public function xAdd(string $key, string $id, array $fields, ?int $maxLen = null, bool $approximate = false): string;
+
+    /**
+     * @link https://redis.io/docs/commands/xclaim
+     * @param string $key
+     * @param string $group
+     * @param string $consumer
+     * @param int $minIdleTime
+     * @param list<string> $ids
+     * @return array<string, mixed>
+     */
+    public function xClaim(string $key, string $group, string $consumer, int $minIdleTime, array $ids): array;
 
     /**
      * @link https://redis.io/docs/commands/xdel
@@ -426,7 +439,7 @@ interface Adapter
      * [!WARNING] The process will not respond to any signals until the block timeout is reached.
      *
      * @link https://redis.io/docs/commands/xread
-     * @param iterable<string, string> $streams
+     * @param array<string, string> $streams
      * @param int|null $count
      * Set to a positive integer to limit the number of entries returned.
      * Set to `null` to return all entries.
@@ -438,7 +451,7 @@ interface Adapter
      * Returns an array of streams and their entries.
      * Format: { stream => { id => { field => value, ... }, ... }
      */
-    public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array;
+    public function xRead(array $streams, ?int $count = null, ?int $blockMilliseconds = null): array;
 
     /**
      * @link https://redis.io/docs/commands/xrevrange
@@ -456,14 +469,115 @@ interface Adapter
      * @param string $key
      * @param int|string $threshold
      * @param int|null $limit
-     * @param XtrimMode $mode
+     * @param XTrimMode $mode
      * @param bool $approximate
      * @return int
      * The number of entries deleted.
      */
-    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int;
+    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XTrimMode $mode = XTrimMode::MaxLen, bool $approximate = false): int;
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
+
+    # region STREAM GROUP-----------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/xack
+     * @param string $key
+     * @param string $group
+     * @param list<string> $ids
+     * @return int
+     * The number of successfully acknowledged messages.
+     */
+    public function xAck(string $key, string $group, array $ids): int;
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-create
+     * @param string $key
+     * @param string $group
+     * @param string $id
+     * @param bool $mkStream
+     * @return void
+     */
+    public function xGroupCreate(string $key, string $group, string $id, bool $mkStream = false): void;
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-createconsumer
+     * @param string $key
+     * @param string $group
+     * @param string $consumer
+     * @return int<0, 1>
+     * The number of created consumers, either 0 or 1.
+     */
+    public function xGroupCreateConsumer(string $key, string $group, string $consumer): int;
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-delconsumer
+     * @param string $key
+     * @param string $group
+     * @param string $consumer
+     * @return int
+     * The number of pending messages the consumer had before it was deleted.
+     *  If the consumer does not exist, 0 is returned.
+     */
+    public function xGroupDelConsumer(string $key, string $group, string $consumer): int;
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-destroy
+     * @param string $key
+     * @param string $group
+     * @return int<0, 1>
+     * the number of destroyed consumer groups, either 0 or 1.
+     */
+    public function xGroupDestroy(string $key, string $group): int;
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-setid
+     * @param string $key
+     * @param string $group
+     * @param string $id
+     * @return void
+     */
+    public function xGroupSetId(string $key, string $group, string $id): void;
+
+    /**
+     * @link https://redis.io/docs/commands/xinfo-consumers
+     * @param string $key
+     * @param string $group
+     * @return list<array<string, scalar>>
+     */
+    public function xInfoConsumers(string $key, string $group): array;
+
+    /**
+     * @link https://redis.io/docs/commands/xinfo-groups
+     * @param string $key
+     * @return list<array<string, scalar>>
+     */
+    public function xInfoGroups(string $key): array;
+
+    /**
+     * @link https://redis.io/docs/commands/xreadgroup
+     * @param string $group
+     * @param string $consumer
+     * @param array<string, string> $streams
+     * @param int|null $count
+     * @param int|null $blockMilliseconds
+     * @return array<string, array<string, mixed>>
+     */
+    public function xReadGroup(string $group, string $consumer, array $streams, ?int $count = null, ?int $blockMilliseconds = null): array;
+
+    /**
+     * @link https://redis.io/docs/commands/xpending
+     * @param string $key
+     * @param string $group
+     * @param string|null $start
+     * @param string|null $end
+     * @param int|null $count
+     * @param string|null $consumer
+     * @return array<string, mixed>
+     */
+    public function xPending(string $key, string $group, ?string $start = null, ?string $end = null, ?int $count = null, ?string $consumer = null): array;
+
+    # endregion STREAM GROUP -------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------
 
@@ -531,17 +645,17 @@ interface Adapter
 
     /**
      * @link https://redis.io/docs/commands/mset
-     * @param iterable<string, mixed> $pairs
+     * @param array<string, mixed> $pairs
      * @return void
      */
-    public function mSet(iterable $pairs): void;
+    public function mSet(array $pairs): void;
 
     /**
      * @link https://redis.io/docs/commands/msetnx
-     * @param iterable<string, mixed> $pairs
+     * @param array<string, mixed> $pairs
      * @return bool
      */
-    public function mSetNx(iterable $pairs): bool;
+    public function mSetNx(array $pairs): bool;
 
     /**
      * @link https://redis.io/docs/commands/set

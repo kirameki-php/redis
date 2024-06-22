@@ -15,7 +15,7 @@ use Kirameki\Redis\Exceptions\RedisException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
-use Kirameki\Redis\Options\XtrimMode;
+use Kirameki\Redis\Options\XTrimMode;
 use Override;
 use Redis;
 use RedisException as PhpRedisException;
@@ -142,8 +142,7 @@ class ExtensionAdapter implements Adapter
                 $client->select($config->database);
             }
             return $client;
-        }
-        catch (PhpRedisException $e) {
+        } catch (PhpRedisException $e) {
             $this->throwAs(ConnectionException::class, $e);
         }
     }
@@ -175,8 +174,7 @@ class ExtensionAdapter implements Adapter
     {
         try {
             return $callback();
-        }
-        catch (PhpRedisException $e) {
+        } catch (PhpRedisException $e) {
             $this->throwAs(CommandException::class, $e);
         }
     }
@@ -316,7 +314,7 @@ class ExtensionAdapter implements Adapter
     public function expireTime(string $key): int|false|null
     {
         $result = $this->run(static fn(Redis $r) => $r->expiretime($key));
-        return match($result) {
+        return match ($result) {
             -2 => false,
             -1 => null,
             default => $result,
@@ -330,7 +328,7 @@ class ExtensionAdapter implements Adapter
     public function pExpireTime(string $key): int|false|null
     {
         $result = $this->run(static fn(Redis $r) => $r->pexpiretime($key));
-        return match($result) {
+        return match ($result) {
             -2 => false,
             -1 => null,
             default => $result,
@@ -438,7 +436,7 @@ class ExtensionAdapter implements Adapter
     public function ttl(string $key): int|false|null
     {
         $result = $this->run(static fn(Redis $r) => $r->ttl($key));
-        return match($result) {
+        return match ($result) {
             -2 => false,
             -1 => null,
             default => $result,
@@ -452,7 +450,7 @@ class ExtensionAdapter implements Adapter
     public function pTtl(string $key): int|false|null
     {
         $result = $this->run(static fn(Redis $r) => $r->pttl($key));
-        return match($result) {
+        return match ($result) {
             -2 => false,
             -1 => null,
             default => $result,
@@ -495,7 +493,7 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
-    public function blPop(iterable $keys, int|float $timeout = 0): ?array
+    public function blPop(array $keys, int|float $timeout = 0): ?array
     {
         $keys = iterator_to_array($keys);
 
@@ -635,11 +633,10 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
-    public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string
+    public function xAdd(string $key, string $id, array $fields, ?int $maxLen = null, bool $approximate = false): string
     {
-        $_fields = iterator_to_array($fields);
         $_maxLen = $maxLen ?? 0;
-        return $this->run(static fn(Redis $r) => $r->xAdd($key, $id, $_fields, $_maxLen, $approximate));
+        return $this->run(static fn(Redis $r) => $r->xAdd($key, $id, $fields, $_maxLen, $approximate));
     }
 
     /**
@@ -682,12 +679,11 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
-    public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array
+    public function xRead(array $streams, ?int $count = null, ?int $blockMilliseconds = null): array
     {
-        $_streams = iterator_to_array($streams);
         $_count = $count ?? -1;
         $_blockMilliseconds = $blockMilliseconds ?? -1;
-        return $this->run(static fn(Redis $r) => $r->xRead($_streams, $_count, $_blockMilliseconds));
+        return $this->run(static fn(Redis $r) => $r->xRead($streams, $_count, $_blockMilliseconds));
     }
 
     /**
@@ -703,10 +699,10 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
-    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int
+    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XTrimMode $mode = XTrimMode::MaxLen, bool $approximate = false): int
     {
         $threshold = (string) $threshold;
-        $minId = $mode === XtrimMode::MinId;
+        $minId = $mode === XTrimMode::MinId;
         return $limit === null
             ? $this->run(static fn(Redis $r) => $r->xTrim($key, $threshold, $approximate, $minId))
             : $this->run(static fn(Redis $r) => $r->xTrim($key, $threshold, $approximate, $minId, $limit));
@@ -714,16 +710,115 @@ class ExtensionAdapter implements Adapter
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
 
+    # region STREAM GROUP-----------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xAck(string $key, string $group, array $ids): int
+    {
+        return $this->run(static fn(Redis $r) => $r->xAck($key, $group, $ids));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xClaim(string $key, string $group, string $consumer, int $minIdleTime, array $ids): array
+    {
+        return $this->run(static fn(Redis $r) => $r->xClaim($key, $group, $consumer, $minIdleTime, $ids, []));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xGroupCreate(string $key, string $group, string $id, bool $mkStream = false): void
+    {
+        $this->run(static fn(Redis $r) => $r->xGroup('CREATE', $key, $group, $id, $mkStream));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xGroupCreateConsumer(string $key, string $group, string $consumer): int
+    {
+        return $this->run(static fn(Redis $r) => $r->xGroup('CREATECONSUMER', $key, $group, $consumer));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xGroupDelConsumer(string $key, string $group, string $consumer): int
+    {
+        return $this->run(static fn(Redis $r) => $r->xGroup('DELCONSUMER', $key, $group, $consumer));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xGroupDestroy(string $key, string $group): int
+    {
+        return $this->run(static fn(Redis $r) => $r->xGroup('DESTROY', $key, $group));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xGroupSetId(string $key, string $group, string $id): void
+    {
+        $this->run(static fn(Redis $r) => $r->xGroup('SETID', $key, $group, $id));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xInfoConsumers(string $key, string $group): array
+    {
+        return $this->run(static fn(Redis $r) => $r->xInfo('CONSUMERS', $key, $group));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xInfoGroups(string $key): array
+    {
+        return $this->run(static fn(Redis $r) => $r->xInfo('GROUPS', $key));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xReadGroup(string $group, string $consumer, array $streams, ?int $count = null, ?int $blockMilliseconds = null): array
+    {
+        return $this->run(static fn(Redis $r) => $r->xReadGroup($group, $consumer, $streams, $count, $blockMilliseconds));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function xPending(string $key, string $group, ?string $start = null, ?string $end = null, ?int $count = null, ?string $consumer = null): array
+    {
+        return $this->run(static fn(Redis $r) => $r->xPending($key, $group, $start, $end, $count ?? -1, $consumer));
+    }
+
+    # endregion STREAM GROUP -------------------------------------------------------------------------------------------
+
     # region STRING ----------------------------------------------------------------------------------------------------
 
     /**
-     * @link https://redis.io/docs/commands/decr
-     * @link https://redis.io/docs/commands/decrby
-     * @param string $key
-     * @param int $by
-     * @return int
-     * The decremented value
+     * @inheritDoc
      */
+    #[Override]
     public function decr(string $key, int $by = 1): int
     {
         return $by === 1
@@ -732,47 +827,36 @@ class ExtensionAdapter implements Adapter
     }
 
     /**
-     * @link https://redis.io/docs/commands/decrbyfloat
-     * @param string $key
-     * @param float $by
-     * @return float
-     * The decremented value
+     * @inheritDoc
      */
+    #[Override]
     public function decrByFloat(string $key, float $by): float
     {
         return $this->run(static fn(Redis $r) => $r->incrByFloat($key, -$by));
     }
 
     /**
-     * @link https://redis.io/docs/commands/get
-     * @param string $key
-     * @return mixed|false
-     * `false` if key does not exist.
+     * @inheritDoc
      */
+    #[Override]
     public function get(string $key): mixed
     {
         return $this->run(static fn(Redis $r) => $r->get($key));
     }
 
     /**
-     * @link https://redis.io/docs/commands/getdel
-     * @param string $key
-     * @return mixed|false
-     * `false` if key does not exist.
+     * @inheritDoc
      */
+    #[Override]
     public function getDel(string $key): mixed
     {
         return $this->run(static fn(Redis $r) => $r->getDel($key));
     }
 
     /**
-     * @link https://redis.io/docs/commands/incr
-     * @link https://redis.io/docs/commands/incrby
-     * @param string $key
-     * @param int $by
-     * @return int
-     * The incremented value
+     * @inheritDoc
      */
+    #[Override]
     public function incr(string $key, int $by = 1): int
     {
         return $by === 1
@@ -781,23 +865,18 @@ class ExtensionAdapter implements Adapter
     }
 
     /**
-     * @link https://redis.io/docs/commands/incrbyfloat
-     * @param string $key
-     * @param float $by
-     * @return float
-     * The incremented value
+     * @inheritDoc
      */
+    #[Override]
     public function incrByFloat(string $key, float $by): float
     {
         return $this->run(static fn(Redis $r) => $r->incrByFloat($key, $by));
     }
 
     /**
-     * @link https://redis.io/docs/commands/mget
-     * @param string ...$key
-     * @return array<string, mixed|false>
-     * Returns `[{retrieved_key} => value, ...]`. `false` if key is not found.
+     * @inheritDoc
      */
+    #[Override]
     public function mGet(string ...$key): array
     {
         if (count($key) === 0) {
@@ -814,47 +893,27 @@ class ExtensionAdapter implements Adapter
     }
 
     /**
-     * @link https://redis.io/docs/commands/mset
-     * @param iterable<string, mixed> $pairs
-     * @return void
+     * @inheritDoc
      */
-    public function mSet(iterable $pairs): void
+    #[Override]
+    public function mSet(array $pairs): void
     {
-        $this->run(static fn(Redis $r) => $r->mSet(iterator_to_array($pairs)));
+        $this->run(static fn(Redis $r) => $r->mSet($pairs));
     }
 
     /**
-     * @link https://redis.io/docs/commands/msetnx
-     * @param iterable<string, mixed> $pairs
-     * @return bool
+     * @inheritDoc
      */
-    public function mSetNx(iterable $pairs): bool
+    #[Override]
+    public function mSetNx(array $pairs): bool
     {
-        return $this->run(static fn(Redis $r) => $r->mSetNx(iterator_to_array($pairs)));
+        return $this->run(static fn(Redis $r) => $r->mSetNx($pairs));
     }
 
     /**
-     * @link https://redis.io/docs/commands/set
-     * @param string $key
-     * The key to set.
-     * @param mixed $value
-     * The value to set. Can be any type when serialization is enabled, can only be scalar type when disabled.
-     * @param SetMode|null $mode
-     * The mode to set the key. Can be `SetMode::Nx` or `SetMode::Xx`. Defaults to `null`.
-     * @param int|null $ex
-     * The number of seconds until the key will expire. Can not be used with `exAt`.
-     * Defaults to `null`.
-     * @param DateTimeInterface|null $exAt
-     * The timestamp when the key will expire. Can not be used with `ex`.
-     * Defaults to `null`.
-     * @param bool $keepTtl
-     * When set to `true`, the key will retain its ttl if key already exists.
-     * Defaults to `false`.
-     * @param bool $get
-     * When set to `true`, the previous value of the key will be returned.
-     * Defaults to `false`.
-     * @return mixed
+     * @inheritDoc
      */
+    #[Override]
     public function set(
         string $key,
         mixed $value,

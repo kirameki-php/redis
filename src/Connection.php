@@ -15,11 +15,13 @@ use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
-use Kirameki\Redis\Options\XtrimMode;
+use Kirameki\Redis\Options\XClaimOption;
+use Kirameki\Redis\Options\XTrimMode;
 use function array_map;
 use function count;
 use function func_get_args as args;
 use function hrtime;
+use function iterator_to_array;
 
 /**
  * HASHES --------------------------------------------------------------------------------------------------------------
@@ -457,7 +459,7 @@ class Connection
      */
     public function blPop(iterable $keys, int|float $timeout = 0): ?array
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->blPop($keys, $timeout));
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->blPop(iterator_to_array($keys), $timeout));
     }
 
     /**
@@ -637,7 +639,8 @@ class Connection
      */
     public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xAdd($key, $id, $fields, $maxLen, $approximate));
+        $_fields = iterator_to_array($fields);
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xAdd($key, $id, $_fields, $maxLen, $approximate));
     }
 
     /**
@@ -711,7 +714,8 @@ class Connection
      */
     public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xRead($streams, $count, $blockMilliseconds));
+        $_streams = iterator_to_array($streams);
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xRead($_streams, $count, $blockMilliseconds));
     }
 
     /**
@@ -733,17 +737,175 @@ class Connection
      * @param string $key
      * @param int|string $threshold
      * @param int|null $limit
-     * @param XtrimMode $mode
+     * @param XTrimMode $mode
      * @param bool $approximate
      * @return int
      * The number of entries deleted.
      */
-    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int
+    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XTrimMode $mode = XTrimMode::MaxLen, bool $approximate = false): int
     {
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xTrim($key, $threshold, $limit, $mode, $approximate));
     }
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
+
+    # region STREAM GROUP-----------------------------------------------------------------------------------------------
+
+    /**
+     * @link https://redis.io/docs/commands/xack
+     * @param string $key
+     * @param string $group
+     * @param iterable<int, string> $ids
+     * @return int
+     * The number of successfully acknowledged messages.
+     */
+    public function xAck(string $key, string $group, iterable $ids): int
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xAck($key, $group, iterator_to_array($ids)));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xclaim
+     * @param string $key
+     * @param string $group
+     * @param string $consumer
+     * @param int $minIdleTime
+     * @param iterable<string> $ids
+     * @return array<string, array<string, mixed>>
+     */
+    public function xClaim(string $key, string $group, string $consumer, int $minIdleTime, iterable $ids): array
+    {
+        $_ids = iterator_to_array($ids);
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xClaim($key, $group, $consumer, $minIdleTime, $_ids));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-create
+     * @param string $key
+     * @param string $group
+     * @param string $id
+     * @param bool $mkStream
+     * @return void
+     */
+    public function xGroupCreate(string $key, string $group, string $id, bool $mkStream = false): void
+    {
+        $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xGroupCreate($key, $group, $id, $mkStream));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-createconsumer
+     * @param string $key
+     * @param string $group
+     * @param string $consumer
+     * @return int<0, 1>
+     * The number of created consumers, either 0 or 1.
+     */
+    public function xGroupCreateConsumer(string $key, string $group, string $consumer): int
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xGroupCreateConsumer($key, $group, $consumer));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-delconsumer
+     * @param string $key
+     * @param string $group
+     * @param string $consumer
+     * @return int
+     * The number of pending messages the consumer had before it was deleted.
+     * If the consumer does not exist, 0 is returned.
+     */
+    public function xGroupDelConsumer(string $key, string $group, string $consumer): int
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xGroupDelConsumer($key, $group, $consumer));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-destroy
+     * @param string $key
+     * @param string $group
+     * @return int<0, 1>
+     * the number of destroyed consumer groups, either 0 or 1.
+     */
+    public function xGroupDestroy(string $key, string $group): int
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xGroupDestroy($key, $group));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xgroup-setid
+     * @param string $key
+     * @param string $group
+     * @param string $id
+     * @return void
+     */
+    public function xGroupSetId(string $key, string $group, string $id): void
+    {
+        $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xGroupSetId($key, $group, $id));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xinfo-consumers
+     * @param string $key
+     * @param string $group
+     * @return list<array<string, scalar>>
+     */
+    public function xInfoConsumers(string $key, string $group): array
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xInfoConsumers($key, $group));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xinfo-groups
+     * @param string $key
+     * @return list<array<string, scalar>>
+     */
+    public function xInfoGroups(string $key): array
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xInfoGroups($key));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xreadgroup
+     * @param string $group
+     * @param string $consumer
+     * @param iterable<string, string> $streams
+     * @param int|null $count
+     * @param int|null $blockMilliseconds
+     * @return array<string, array<string, mixed>>
+     */
+    public function xReadGroup(string $group, string $consumer, iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array
+    {
+        $_streams = iterator_to_array($streams);
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xReadGroup($group, $consumer, $_streams, $count, $blockMilliseconds));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xpending
+     * @param string $key
+     * @param string $group
+     * @return list<mixed>
+     */
+    public function xPending(string $key, string $group, string $start, string $end, int $count): array
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xPending($key, $group, $start, $end, $count));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/xpending
+     * @param string $key
+     * @param string $group
+     * @param string $consumer
+     * @param string $start
+     * @param string $end
+     * @param int $count
+     * @return list<mixed>
+     */
+    public function xPendingConsumer(string $key, string $group, string $consumer, string $start, string $end, int $count): array
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xPending($key, $group, $start, $end, $count, $consumer));
+    }
+
+    # endregion STREAM GROUP -------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------
 
@@ -837,7 +999,7 @@ class Connection
      */
     public function mSet(iterable $pairs): void
     {
-        $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->mSet($pairs));
+        $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->mSet(iterator_to_array($pairs)));
     }
 
     /**
@@ -847,7 +1009,7 @@ class Connection
      */
     public function mSetNx(iterable $pairs): bool
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->mSetNx($pairs));
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->mSetNx(iterator_to_array($pairs)));
     }
 
     /**

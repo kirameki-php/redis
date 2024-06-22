@@ -19,6 +19,7 @@ use function array_keys;
 use function count;
 use function dump;
 use function mt_rand;
+use function sleep;
 use function time;
 
 final class ConnectionTest extends TestCase
@@ -860,6 +861,173 @@ final class ConnectionTest extends TestCase
     }
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
+
+    # region STREAM GROUP ----------------------------------------------------------------------------------------------
+
+    public function test_stream_group_xAck(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id2 = $conn->xAdd('stream', '*', ['b' => 2]);
+        $id3 = $conn->xAdd('stream', '*', ['c' => 3]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer'));
+        $this->assertCount(3, $conn->xReadGroup('group', 'consumer', ['stream' => '>'])['stream']);
+        $this->assertSame(2, $conn->xAck('stream', 'group', [$id1, $id2]));
+        $this->assertEmpty($conn->xReadGroup('group', 'consumer', ['stream' => '>']));
+        $this->assertSame(1, $conn->xAck('stream', 'group', [$id2, $id3]));
+        $this->assertEmpty($conn->xReadGroup('group', 'consumer', ['stream' => '>']));
+    }
+
+    public function test_stream_group_xClaim(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $id1 = $conn->xAdd('stream', '*', ['a' => 1]);
+        $id2 = $conn->xAdd('stream', '*', ['b' => 2]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer1'));
+        $this->assertCount(2, $conn->xReadGroup('group', 'consumer1', ['stream' => '>'])['stream']);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer2'));
+        $this->assertCount(2, $conn->xClaim('stream', 'group', 'consumer2', 0, [$id1, $id2]));
+    }
+
+    public function test_stream_group_xGroupCreate__make_stream(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $this->assertSame(Type::Stream, $conn->type('stream'));
+    }
+
+    public function test_stream_group_xGroupCreate__no_stream(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR The XGROUP subcommand requires the key to exist.');
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0');
+    }
+
+    public function test_stream_group_xGroupCreate__no_stream_on_second_try(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('BUSYGROUP Consumer Group name already exists');
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $conn->xGroupCreate('stream', 'group', '0', false);
+    }
+
+    public function test_stream_group_xGroupCreateConsumer(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer'));
+        $this->assertSame(0, $conn->xGroupCreateConsumer('stream', 'group', 'consumer'));
+    }
+
+    public function test_stream_group_xGroupDelConsumer__default(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer'));
+        $this->assertCount(2, $conn->xReadGroup('group', 'consumer', ['stream' => '>'])['stream']);
+        $this->assertSame(2, $conn->xGroupDelConsumer('stream', 'group', 'consumer'));
+    }
+
+    public function test_stream_group_xGroupDelConsumer__non_existing(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $this->assertSame(0, $conn->xGroupDelConsumer('stream', 'group', 'consumer'));
+    }
+
+    public function test_stream_group_xGroupDestroy(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer1'));
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer2'));
+        $this->assertSame(1, $conn->xGroupDestroy('stream', 'group'));
+        $this->assertSame(0, $conn->xGroupDestroy('stream', 'group'));
+    }
+
+    public function test_stream_group_xGroupSetId(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $id = $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer'));
+        $this->assertCount(2, $conn->xReadGroup('group', 'consumer', ['stream' => '>'])['stream']);
+        $this->assertSame(1, $conn->xAck('stream', 'group', [$id]));
+        $conn->xGroupSetId('stream', 'group', '0-0');
+        $this->assertCount(2, $conn->xReadGroup('group', 'consumer', ['stream' => '>'])['stream']);
+    }
+
+    public function test_stream_group_xInfoConsumers(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer1'));
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer2'));
+        $info = $conn->xInfoConsumers('stream', 'group');
+        $this->assertCount(2, $info);
+        $this->assertSame('consumer1', $info[0]['name']);
+        $this->assertSame('consumer2', $info[1]['name']);
+    }
+
+    public function test_stream_group_xInfoGroups(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group1', '0', true);
+        $conn->xGroupCreate('stream', 'group2', '0', true);
+        $conn->xAdd('stream', '*', ['a' => 1]);
+        $conn->xAdd('stream', '*', ['b' => 2]);
+        $info = $conn->xInfoGroups('stream');
+        $this->assertCount(2, $info);
+        $this->assertSame('group1', $info[0]['name']);
+        $this->assertSame('group2', $info[1]['name']);
+    }
+
+    public function test_stream_group_xPending(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $conn->xAdd('stream', '1-0', ['a' => 1]);
+        $conn->xAdd('stream', '2-0', ['b' => 2]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer1'));
+        $this->assertCount(2, $conn->xReadGroup('group', 'consumer1', ['stream' => '>'])['stream']);
+        $result = $conn->xPending('stream', 'group', '-', '+', 10);
+        $this->assertCount(2, $result);
+        $this->assertSame('1-0', $result[0][0]);
+        $this->assertSame('2-0', $result[1][0]);
+    }
+
+    public function test_stream_group_xPendingConsumer(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $conn->xGroupCreate('stream', 'group', '0', true);
+        $conn->xAdd('stream', '1-0', ['a' => 1]);
+        $conn->xAdd('stream', '2-0', ['b' => 2]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer1'));
+        $this->assertCount(2, $conn->xReadGroup('group', 'consumer1', ['stream' => '>'])['stream']);
+        $result = $conn->xPendingConsumer('stream', 'group', 'consumer1', '-', '+', 10);
+        $this->assertCount(2, $result);
+        $this->assertSame('1-0', $result[0][0]);
+        $this->assertSame('2-0', $result[1][0]);
+        $conn->xAdd('stream', '3-0', ['c' => 3]);
+        $this->assertSame(1, $conn->xGroupCreateConsumer('stream', 'group', 'consumer2'));
+        $this->assertCount(1, $conn->xReadGroup('group', 'consumer2', ['stream' => '>'])['stream']);
+        $result = $conn->xPendingConsumer('stream', 'group', 'consumer2', '-', '+', 10);
+        $this->assertCount(1, $result);
+        $this->assertSame('3-0', $result[0][0]);
+    }
+
+    # endregion STREAM GROUP -------------------------------------------------------------------------------------------
 
     # region STRING ----------------------------------------------------------------------------------------------------
 
