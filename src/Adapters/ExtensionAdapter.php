@@ -4,13 +4,14 @@ namespace Kirameki\Redis\Adapters;
 
 use Closure;
 use DateTimeInterface;
+use Exception;
 use Kirameki\Core\Exceptions\InvalidConfigException;
 use Kirameki\Core\Exceptions\LogicException;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
-use Kirameki\Redis\Exceptions\RedisException;
 use Generator;
+use Kirameki\Redis\Exceptions\RedisException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
@@ -27,11 +28,20 @@ use function strlen;
 use function substr;
 
 /**
- * @extends Adapter<ExtensionConfig>
+ * @implements Adapter<ExtensionConfig>
  */
-class ExtensionAdapter extends Adapter
+class ExtensionAdapter implements Adapter
 {
-    protected ?Redis $client = null;
+    /**
+     * @param ExtensionConfig $config
+     * @param Redis|null $client
+     */
+    public function __construct(
+        protected ExtensionConfig $config,
+        protected ?Redis $client = null,
+    )
+    {
+    }
 
     /**
      * @return Redis
@@ -139,12 +149,21 @@ class ExtensionAdapter extends Adapter
     }
 
     /**
-     * @inheritDoc
+     * @param Closure(Redis): mixed $callback
+     * @return mixed
      */
-    #[Override]
-    public function rawCommand(string $name, array $args): mixed
+    protected function run(Closure $callback): mixed
     {
-        return $this->run(static fn(Redis $r) => $r->rawCommand($name, ...$args));
+        $client = $this->getClient();
+
+        $result = $this->withCatch(static fn() => $callback($client));
+
+        if ($err = $client->getLastError()) {
+            $client->clearLastError();
+            throw new CommandException($err);
+        }
+
+        return $result;
     }
 
     /**
@@ -164,10 +183,10 @@ class ExtensionAdapter extends Adapter
 
     /**
      * @param class-string<RedisException> $class
-     * @param PhpRedisException $base
+     * @param Exception $base
      * @return no-return
      */
-    protected function throwAs(string $class, PhpRedisException $base): never
+    protected function throwAs(string $class, Exception $base): never
     {
         // Dig through exceptions to get to the root one that is not wrapped in RedisException
         // since wrapping it twice is pointless.
@@ -176,25 +195,6 @@ class ExtensionAdapter extends Adapter
             $root = $last;
         }
         throw new $class($base->getMessage(), $base->getCode(), $root);
-    }
-
-    /**
-     * @template T
-     * @param Closure(Redis): T $callback
-     * @return mixed
-     */
-    protected function run(Closure $callback): mixed
-    {
-        $client = $this->getClient();
-
-        $result = $this->withCatch(static fn() => $callback($client));
-
-        if ($err = $client->getLastError()) {
-            $client->clearLastError();
-            throw new CommandException($err);
-        }
-
-        return $result;
     }
 
     # region CONNECTION ------------------------------------------------------------------------------------------------
@@ -275,6 +275,15 @@ class ExtensionAdapter extends Adapter
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
 
     # region GENERIC ---------------------------------------------------------------------------------------------------
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function rawCommand(string $name, array $args): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->rawCommand($name, ...$args));
+    }
 
     /**
      * @inheritDoc

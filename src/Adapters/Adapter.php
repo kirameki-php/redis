@@ -14,38 +14,22 @@ use Kirameki\Redis\Options\XtrimMode;
 /**
  * @template TConnectionConfig of ConnectionConfig
  */
-abstract class Adapter
+interface Adapter
 {
-    /**
-     * @param TConnectionConfig $config
-     */
-    public function __construct(
-        public readonly ConnectionConfig $config,
-    )
-    {
-    }
-
     /**
      * @return $this
      */
-    abstract public function connect(): static;
+    public function connect(): static;
 
     /**
      * @return bool
      */
-    abstract public function disconnect(): bool;
+    public function disconnect(): bool;
 
     /**
      * @return bool
      */
-    abstract public function isConnected(): bool;
-
-    /**
-     * @param string $name
-     * @param array<mixed> $args
-     * @return mixed
-     */
-    abstract public function rawCommand(string $name, array $args): mixed;
+    public function isConnected(): bool;
 
     # region CONNECTION ------------------------------------------------------------------------------------------------
 
@@ -53,56 +37,63 @@ abstract class Adapter
      * @link https://redis.io/docs/commands/client-id
      * @return int
      */
-    abstract public function clientId(): int;
+    public function clientId(): int;
 
     /**
      * @link https://redis.io/docs/commands/client-info
      * @return array<string, ?scalar>
      */
-    abstract public function clientInfo(): array;
+    public function clientInfo(): array;
 
     /**
      * @link https://redis.io/docs/commands/client-kill
      * @param string $ipAddressAndPort
      * @return bool
      */
-    abstract public function clientKill(string $ipAddressAndPort): bool;
+    public function clientKill(string $ipAddressAndPort): bool;
 
     /**
      * @link https://redis.io/docs/commands/client-list
      * @return list<array{ id: int, addr: string, laddr: string, fd: int, name: string, db: int }>
      */
-    abstract public function clientList(): array;
+    public function clientList(): array;
 
     /**
      * @link https://redis.io/docs/commands/client-getname
      * @return string|null
      */
-    abstract public function clientGetname(): ?string;
+    public function clientGetname(): ?string;
 
     /**
      * @link https://redis.io/docs/commands/client-setname
      * @param string $name
      * @return void
      */
-    abstract public function clientSetname(string $name): void;
+    public function clientSetname(string $name): void;
 
     /**
      * @link https://redis.io/docs/commands/echo
      * @param string $message
      * @return string
      */
-    abstract public function echo(string $message): string;
+    public function echo(string $message): string;
 
     /**
      * @link https://redis.io/docs/commands/ping
      * @return bool
      */
-    abstract public function ping(): bool;
+    public function ping(): bool;
 
     # endregion CONNECTION ---------------------------------------------------------------------------------------------
 
     # region GENERIC ---------------------------------------------------------------------------------------------------
+
+    /**
+     * @param string $name
+     * @param array<mixed> $args
+     * @return mixed
+     */
+    public function rawCommand(string $name, array $args): mixed;
 
     /**
      * @link https://redis.io/docs/commands/del
@@ -110,14 +101,14 @@ abstract class Adapter
      * @return int
      * Returns the number of keys that were removed.
      */
-    abstract public function del(string ...$key): int;
+    public function del(string ...$key): int;
 
     /**
      * @link https://redis.io/docs/commands/exists
      * @param string ...$key
      * @return int
      */
-    abstract public function exists(string ...$key): int;
+    public function exists(string ...$key): int;
 
     /**
      * @link https://redis.io/docs/commands/expiretime
@@ -127,7 +118,7 @@ abstract class Adapter
      * Returns `null` if key exists but has no associated expire.
      * Returns `false` if key does not exist.
      */
-    abstract public function expireTime(string $key): int|false|null;
+    public function expireTime(string $key): int|false|null;
 
     /**
      * @link https://redis.io/docs/commands/pexpiretime
@@ -137,14 +128,14 @@ abstract class Adapter
      * Returns `null` if key exists but has no associated expire.
      * Returns `false` if key does not exist.
      */
-    abstract public function pExpireTime(string $key): int|false|null;
+    public function pExpireTime(string $key): int|false|null;
 
     /**
      * @link https://redis.io/docs/commands/perist
      * @param string $key
      * @return bool
      */
-    abstract public function persist(string $key): bool;
+    public function persist(string $key): bool;
 
     /**
      * @link https://redis.io/docs/commands/expire
@@ -153,7 +144,7 @@ abstract class Adapter
      * @param TtlMode|null $mode
      * @return bool
      */
-    abstract public function expire(string $key, int $seconds, ?TtlMode $mode = null): bool;
+    public function expire(string $key, int $seconds, ?TtlMode $mode = null): bool;
 
     /**
      * @link https://redis.io/docs/commands/pexpire
@@ -162,7 +153,7 @@ abstract class Adapter
      * @param TtlMode|null $mode
      * @return bool
      */
-    abstract public function pExpire(string $key, int $milliseconds, ?TtlMode $mode = null): bool;
+    public function pExpire(string $key, int $milliseconds, ?TtlMode $mode = null): bool;
 
     /**
      * @link https://redis.io/docs/commands/expireat
@@ -171,7 +162,7 @@ abstract class Adapter
      * @param TtlMode|null $mode
      * @return bool
      */
-    abstract public function expireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool;
+    public function expireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool;
 
     /**
      * @link https://redis.io/docs/commands/pexpireat
@@ -180,14 +171,14 @@ abstract class Adapter
      * @param TtlMode|null $mode
      * @return bool
      */
-    abstract public function pExpireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool;
+    public function pExpireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool;
 
     /**
      * @link https://redis.io/docs/commands/randomkey
      * @return string|null
      * Returns random key existing in server. Returns `null` if no key exists.
      */
-    abstract public function randomKey(): ?string;
+    public function randomKey(): ?string;
 
     /**
      * @link https://redis.io/docs/commands/rename
@@ -198,7 +189,7 @@ abstract class Adapter
      * @throws CommandException
      * "ERR no such key" is thrown if no key exists.
      */
-    abstract public function rename(string $srcKey, string $dstKey): bool;
+    public function rename(string $srcKey, string $dstKey): bool;
 
     /**
      * @link https://redis.io/docs/commands/renamenx
@@ -209,7 +200,7 @@ abstract class Adapter
      * @throws CommandException
      * "ERR no such key" is thrown if no key exists.
      */
-    abstract public function renameNx(string $srcKey, string $dstKey): bool;
+    public function renameNx(string $srcKey, string $dstKey): bool;
 
     /**
      * @link https://redis.io/docs/commands/scan
@@ -218,7 +209,7 @@ abstract class Adapter
      * @param bool $prefixed
      * @return Generator<int, string>
      */
-    abstract public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator;
+    public function scan(string $pattern = '*', int $count = 10_000, bool $prefixed = false): Generator;
 
     /**
      * @link https://redis.io/docs/commands/ttl
@@ -228,7 +219,7 @@ abstract class Adapter
      * Returns `null` if key exists but has no associated expire.
      * Returns `false` if key does not exist.
      */
-    abstract public function ttl(string $key): int|false|null;
+    public function ttl(string $key): int|false|null;
 
     /**
      * @link https://redis.io/docs/commands/pttl
@@ -238,21 +229,21 @@ abstract class Adapter
      * Returns `null` if key exists but has no associated expire.
      * Returns `false` if key does not exist.
      */
-    abstract public function pTtl(string $key): int|false|null;
+    public function pTtl(string $key): int|false|null;
 
     /**
      * @link https://redis.io/docs/commands/type
      * @param string $key
      * @return Type
      */
-    abstract public function type(string $key): Type;
+    public function type(string $key): Type;
 
     /**
      * @link https://redis.io/docs/commands/unlink
      * @param string ...$key
      * @return int
      */
-    abstract public function unlink(string ...$key): int;
+    public function unlink(string ...$key): int;
 
     # endregion GENERIC ------------------------------------------------------------------------------------------------
 
@@ -264,7 +255,7 @@ abstract class Adapter
      * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
      * @return array<string, mixed>|null  Returns null on timeout
      */
-    abstract public function blPop(iterable $keys, int|float $timeout = 0): ?array;
+    public function blPop(iterable $keys, int|float $timeout = 0): ?array;
 
     /**
      * @link https://redis.io/docs/commands/lindex
@@ -273,7 +264,7 @@ abstract class Adapter
      * @return mixed|false  The value at index or `false` if... (1) key is missing or (2) index is missing.
      * @throws CommandException  if key set but is not a list.
      */
-    abstract public function lIndex(string $key, int $index): mixed;
+    public function lIndex(string $key, int $index): mixed;
 
     /**
      * Each element is inserted to the head of the list, from the leftmost to the rightmost element.
@@ -284,7 +275,7 @@ abstract class Adapter
      * @param mixed ...$value
      * @return int  length of the list after the push operation.
      */
-    abstract public function lPush(string $key, mixed ...$value): int;
+    public function lPush(string $key, mixed ...$value): int;
 
     /**
      * Each element is inserted to the tail of the list, from the leftmost to the rightmost element.
@@ -295,7 +286,7 @@ abstract class Adapter
      * @param mixed ...$value
      * @return int  length of the list after the push operation.
      */
-    abstract public function rPush(string $key, mixed ...$value): int;
+    public function rPush(string $key, mixed ...$value): int;
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
 
@@ -308,7 +299,7 @@ abstract class Adapter
      * @param int|string ...$arg
      * @return mixed
      */
-    abstract public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed;
+    public function eval(string $script, int $numKeys = 0, int|string ...$arg): mixed;
 
     /**
      * @link https://redis.io/commands/evalsha_ro
@@ -317,7 +308,7 @@ abstract class Adapter
      * @param int|string ...$arg
      * @return mixed
      */
-    abstract public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed;
+    public function evalRo(string $script, int $numKeys = 0, int|string ...$arg): mixed;
 
     /**
      * @link https://redis.io/commands/evalsha
@@ -326,7 +317,7 @@ abstract class Adapter
      * @param int|string ...$arg
      * @return mixed
      */
-    abstract public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
+    public function evalSha(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
 
     /**
      * @link https://redis.io/commands/evalsha_ro
@@ -335,27 +326,27 @@ abstract class Adapter
      * @param int|string ...$arg
      * @return mixed
      */
-    abstract public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
+    public function evalShaRo(string $sha1, int $numKeys = 0, int|string ...$arg): mixed;
 
     /**
      * @link https://redis.io/commands/script-exists
      * @param string ...$sha1
      * @return list<bool>
      */
-    abstract public function scriptExists(string ...$sha1): array;
+    public function scriptExists(string ...$sha1): array;
 
     /**
      * @link https://redis.io/commands/script-flush
      * @return void
      */
-    abstract public function scriptFlush(): void;
+    public function scriptFlush(): void;
 
     /**
      * @link https://redis.io/commands/script-load
      * @return string
      * The SHA1 digest of the script added into the script cache.
      */
-    abstract public function scriptLoad(string $script): string;
+    public function scriptLoad(string $script): string;
 
     # endregion SCRIPT -------------------------------------------------------------------------------------------------
 
@@ -367,13 +358,13 @@ abstract class Adapter
      * @param string ...$args
      * @return mixed
      */
-    abstract public function acl(string $operation, string ...$args): mixed;
+    public function acl(string $operation, string ...$args): mixed;
 
     /**
      * @link https://redis.io/docs/commands/dbsize
      * @return int
      */
-    abstract public function dbSize(): int;
+    public function dbSize(): int;
 
     # endregion SERVER -------------------------------------------------------------------------------------------------
 
@@ -388,7 +379,7 @@ abstract class Adapter
      * @param bool $approximate
      * @return string
      */
-    abstract public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string;
+    public function xAdd(string $key, string $id, iterable $fields, ?int $maxLen = null, bool $approximate = false): string;
 
     /**
      * @link https://redis.io/docs/commands/xdel
@@ -397,14 +388,14 @@ abstract class Adapter
      * @return int
      * The number of entries deleted.
      */
-    abstract public function xDel(string $key, string ...$id): int;
+    public function xDel(string $key, string ...$id): int;
 
     /**
      * @link https://redis.io/docs/commands/xlen
      * @param string $key
      * @return int
      */
-    abstract public function xLen(string $key): int;
+    public function xLen(string $key): int;
 
     /**
      * @link https://redis.io/docs/commands/xrange
@@ -417,7 +408,7 @@ abstract class Adapter
      * @return array<string, array<string, mixed>>
      * A list of stream entries with IDs matching the specified range.
      */
-    abstract public function xRange(string $key, string $start, string $end, ?int $count = null): array;
+    public function xRange(string $key, string $start, string $end, ?int $count = null): array;
 
     /**
      * [!NOTE] When `blockMilliseconds` > 0, the method will return `null` on timeout.
@@ -436,7 +427,7 @@ abstract class Adapter
      * Returns an array of streams and their entries.
      * Format: { stream => { id => { field => value, ... }, ... }
      */
-    abstract public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array;
+    public function xRead(iterable $streams, ?int $count = null, ?int $blockMilliseconds = null): array;
 
     /**
      * @link https://redis.io/docs/commands/xrevrange
@@ -447,7 +438,7 @@ abstract class Adapter
      * @return array<string, array<string, mixed>>
      * A list of stream entries with IDs matching the specified range.
      */
-    abstract public function xRevRange(string $key, string $end, string $start, ?int $count = null): array;
+    public function xRevRange(string $key, string $end, string $start, ?int $count = null): array;
 
     /**
      * @link https://redis.io/docs/commands/xtrim
@@ -459,7 +450,7 @@ abstract class Adapter
      * @return int
      * The number of entries deleted.
      */
-    abstract public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int;
+    public function xTrim(string $key, int|string $threshold, ?int $limit = null, XtrimMode $mode = XtrimMode::MaxLen, bool $approximate = false): int;
 
     # endregion STREAM -------------------------------------------------------------------------------------------------
 
@@ -473,7 +464,7 @@ abstract class Adapter
      * @return int
      * The decremented value
      */
-    abstract public function decr(string $key, int $by = 1): int;
+    public function decr(string $key, int $by = 1): int;
 
     /**
      * @link https://redis.io/docs/commands/decrbyfloat
@@ -482,7 +473,7 @@ abstract class Adapter
      * @return float
      * The decremented value
      */
-    abstract public function decrByFloat(string $key, float $by): float;
+    public function decrByFloat(string $key, float $by): float;
 
     /**
      * @link https://redis.io/docs/commands/get
@@ -490,7 +481,7 @@ abstract class Adapter
      * @return mixed|false
      * `false` if key does not exist.
      */
-    abstract public function get(string $key): mixed;
+    public function get(string $key): mixed;
 
     /**
      * @link https://redis.io/docs/commands/getdel
@@ -498,7 +489,7 @@ abstract class Adapter
      * @return mixed|false
      * `false` if key does not exist.
      */
-    abstract public function getDel(string $key): mixed;
+    public function getDel(string $key): mixed;
 
     /**
      * @link https://redis.io/docs/commands/incr
@@ -508,7 +499,7 @@ abstract class Adapter
      * @return int
      * The incremented value
      */
-    abstract public function incr(string $key, int $by = 1): int;
+    public function incr(string $key, int $by = 1): int;
 
     /**
      * @link https://redis.io/docs/commands/incrbyfloat
@@ -517,7 +508,7 @@ abstract class Adapter
      * @return float
      * The incremented value
      */
-    abstract public function incrByFloat(string $key, float $by): float;
+    public function incrByFloat(string $key, float $by): float;
 
     /**
      * @link https://redis.io/docs/commands/mget
@@ -525,21 +516,21 @@ abstract class Adapter
      * @return array<string, mixed|false>
      * Returns `[{retrieved_key} => value, ...]`. `false` if key is not found.
      */
-    abstract public function mGet(string ...$key): array;
+    public function mGet(string ...$key): array;
 
     /**
      * @link https://redis.io/docs/commands/mset
      * @param iterable<string, mixed> $pairs
      * @return void
      */
-    abstract public function mSet(iterable $pairs): void;
+    public function mSet(iterable $pairs): void;
 
     /**
      * @link https://redis.io/docs/commands/msetnx
      * @param iterable<string, mixed> $pairs
      * @return bool
      */
-    abstract public function mSetNx(iterable $pairs): bool;
+    public function mSetNx(iterable $pairs): bool;
 
     /**
      * @link https://redis.io/docs/commands/set
@@ -563,7 +554,7 @@ abstract class Adapter
      * Defaults to `false`.
      * @return mixed
      */
-    abstract public function set(
+    public function set(
         string $key,
         mixed $value,
         ?SetMode $mode = null,
