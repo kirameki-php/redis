@@ -15,7 +15,6 @@ use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
-use Kirameki\Redis\Options\XClaimOption;
 use Kirameki\Redis\Options\XTrimMode;
 use function array_map;
 use function count;
@@ -24,18 +23,6 @@ use function hrtime;
 use function iterator_to_array;
 
 /**
- * HASHES --------------------------------------------------------------------------------------------------------------
- * @method mixed hDel(string $key, string $field)
- * @method bool hExists(string $key, string $field)
- * @method mixed hGet(string $key, string $field)
- * @method array hGetAll(string $key)
- * @method mixed hIncrBy(string $key, string $field, int $amount)
- * @method array hKeys(string $key)
- * @method int hLen(string $key)
- * @method mixed hSet(string $key, string $field, $value)
- * @method mixed hSetNx(string $key, string $field, $value)
- * @method array hVals(string $key)
- *
  * LISTS ---------------------------------------------------------------------------------------------------------------
  * @method mixed  brPop(string[] $key, int $timeout)
  * @method mixed  brpoplpush(string $source, string $destination, int $timeout)

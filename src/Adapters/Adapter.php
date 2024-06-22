@@ -9,9 +9,7 @@ use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
-use Kirameki\Redis\Options\XClaimOption;
 use Kirameki\Redis\Options\XTrimMode;
-use function func_get_args as args;
 
 /**
  * @template TConnectionConfig of ConnectionConfig
