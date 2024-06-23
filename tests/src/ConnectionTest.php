@@ -19,7 +19,6 @@ use function array_keys;
 use function count;
 use function dump;
 use function mt_rand;
-use function sleep;
 use function time;
 
 final class ConnectionTest extends TestCase
