@@ -664,10 +664,15 @@ interface Adapter
      * @param SetMode|null $mode
      * The mode to set the key. Can be `SetMode::Nx` or `SetMode::Xx`. Defaults to `null`.
      * @param int|null $ex
-     * The number of seconds until the key will expire. Can not be used with `exAt`.
+     * The number of seconds until the key will expire. Can not be used with `px`, `exAt`.
      * Defaults to `null`.
      * @param DateTimeInterface|null $exAt
-     * The timestamp when the key will expire. Can not be used with `ex`.
+     * * The timestamp when the key will expire. Can not be used with `ex`, `px`, `pxAt`.
+     * @param int|null $px
+     * *  The number of milliseconds until the key will expire. Can not be used with `ex`, `exAt`, or `pxAt`.
+     * * Defaults to `null`.
+     * @param DateTimeInterface|null $pxAt
+     * * The timestamp when the key will expire. Can not be used with `ex`, `px`, `exAt`.
      * Defaults to `null`.
      * @param bool $keepTtl
      * When set to `true`, the key will retain its ttl if key already exists.
@@ -683,6 +688,8 @@ interface Adapter
         ?SetMode $mode = null,
         ?int $ex = null,
         ?DateTimeInterface $exAt = null,
+        ?int $px = null,
+        ?DateTimeInterface $pxAt = null,
         bool $keepTtl = false,
         bool $get = false,
     ): mixed;

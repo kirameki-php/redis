@@ -870,6 +870,9 @@ class RedisConnection
      * @link https://redis.io/docs/commands/xpending
      * @param string $key
      * @param string $group
+     * @param string $start
+     * @param string $end
+     * @param int $count
      * @return list<mixed>
      */
     public function xPending(string $key, string $group, string $start, string $end, int $count): array
@@ -1000,6 +1003,7 @@ class RedisConnection
     }
 
     /**
+     * TODO add PX test
      * @link https://redis.io/docs/commands/set
      * @param string $key
      * The key to set.
@@ -1008,11 +1012,16 @@ class RedisConnection
      * @param SetMode|null $mode
      * The mode to set the key. Can be `SetMode::Nx` or `SetMode::Xx`. Defaults to `null`.
      * @param int|null $ex
-     * The number of seconds until the key will expire. Can not be used with `exAt`.
-     * Defaults to `null`.
+     *  The number of seconds until the key will expire. Can not be used with `px`, `exAt`.
+     *  Defaults to `null`.
      * @param DateTimeInterface|null $exAt
-     * The timestamp when the key will expire. Can not be used with `ex`.
-     * Defaults to `null`.
+     *  * The timestamp when the key will expire. Can not be used with `ex`, `px`, `pxAt`.
+     * @param int|null $px
+     *  *  The number of milliseconds until the key will expire. Can not be used with `ex`, `exAt`, or `pxAt`.
+     *  * Defaults to `null`.
+     * @param DateTimeInterface|null $pxAt
+     *  * The timestamp when the key will expire. Can not be used with `ex`, `px`, `exAt`.
+     *  Defaults to `null`.
      * @param bool $keepTtl
      * When set to `true`, the key will retain its ttl if key already exists.
      * Defaults to `false`.
@@ -1027,11 +1036,13 @@ class RedisConnection
         ?SetMode $mode = null,
         ?int $ex = null,
         ?DateTimeInterface $exAt = null,
+        ?int $px = null,
+        ?DateTimeInterface $pxAt = null,
         bool $keepTtl = false,
         bool $get = false,
     ): mixed
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->set($key, $value, $mode, $ex, $exAt, $keepTtl, $get));
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->set($key, $value, $mode, $ex, $exAt, $px, $pxAt, $keepTtl, $get));
     }
 
     # endregion STRING -------------------------------------------------------------------------------------------------

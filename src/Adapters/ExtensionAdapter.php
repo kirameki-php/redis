@@ -920,6 +920,8 @@ class ExtensionAdapter implements Adapter
         ?SetMode $mode = null,
         ?int $ex = null,
         ?DateTimeInterface $exAt = null,
+        ?int $px = null,
+        ?DateTimeInterface $pxAt = null,
         bool $keepTtl = false,
         bool $get = false,
     ): mixed
@@ -931,8 +933,15 @@ class ExtensionAdapter implements Adapter
         if ($ex !== null) {
             $options['ex'] = $ex;
         }
+        if ($px !== null) {
+            $options['px'] = $px;
+        }
         if ($exAt !== null) {
             $options['exat'] = $exAt->getTimestamp();
+        }
+        if ($pxAt !== null) {
+            $float = $pxAt->format('U.u');
+            $options['pxat'] = (int) ($float * 1000);
         }
         if ($keepTtl) {
             $options[] = 'keepttl';
