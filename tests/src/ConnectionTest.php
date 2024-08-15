@@ -618,6 +618,16 @@ final class ConnectionTest extends TestCase
         $conn->set('t', 1, exAt: new DateTimeImmutable('+10 seconds'), px: 10);
     }
 
+    public function test_generic_set_both_exAt_and_pxAt(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot use pxAt with ex, exAt or px at the same time.');
+
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $time = new DateTimeImmutable('+10 seconds');
+        $conn->set('t', 1, exAt: $time, pxAt: $time);
+    }
+
     public function test_generic_set_both_px_and_pxAt(): void
     {
         $this->expectException(LogicException::class);
