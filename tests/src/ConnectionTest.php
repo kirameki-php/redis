@@ -6,6 +6,7 @@ use DateTimeImmutable;
 use Kirameki\Collections\Utils\Arr;
 use Kirameki\Collections\Vec;
 use Kirameki\Core\Exceptions\ErrorException;
+use Kirameki\Core\Exceptions\LogicException;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
@@ -565,6 +566,65 @@ final class ConnectionTest extends TestCase
         $this->assertTrue($conn->set('t2', 1, exAt: $secondsAhead));
         $this->assertLessThanOrEqual(3, $conn->ttl('t1'));
         $this->assertLessThanOrEqual(3, $conn->ttl('t2'));
+    }
+
+    public function test_generic_set_px(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertTrue($conn->set('t', 1, px: 500));
+        $this->assertLessThanOrEqual(500, $conn->pTtl('t'));
+    }
+
+    public function test_generic_set_pxAt(): void
+    {
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $this->assertTrue($conn->set('t', 1, pxAt: new DateTimeImmutable('+2 seconds')));
+        $this->assertLessThanOrEqual(2000, $conn->pTtl('t'));
+    }
+
+    public function test_generic_set_both_ex_and_exAt(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot use ex with px, exAt or pxAt at the same time.');
+
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn->set('t', 1, ex: 10, exAt: new DateTimeImmutable('+10 seconds'));
+    }
+
+    public function test_generic_set_both_ex_and_px(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot use ex with px, exAt or pxAt at the same time.');
+
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn->set('t', 1, ex: 10, px: 500);
+    }
+
+    public function test_generic_set_both_ex_and_pxAt(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot use ex with px, exAt or pxAt at the same time.');
+
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn->set('t', 1, ex: 10, pxAt: new DateTimeImmutable('+10 seconds'));
+    }
+
+    public function test_generic_set_both_exAt_and_px(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot use px with ex, exAt or pxAt at the same time.');
+
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn->set('t', 1, exAt: new DateTimeImmutable('+10 seconds'), px: 10);
+    }
+
+    public function test_generic_set_both_px_and_pxAt(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot use px with ex, exAt or pxAt at the same time.');
+
+        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn->set('t', 1, px: 10, pxAt: new DateTimeImmutable('+10 seconds'));
     }
 
     public function test_generic_set_keepTtl(): void

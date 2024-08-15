@@ -931,15 +931,27 @@ class ExtensionAdapter implements Adapter
             $options[] = $mode->value;
         }
         if ($ex !== null) {
+            if ($exAt !== null || $px !== null || $pxAt !== null) {
+                throw new LogicException('Cannot use ex with px, exAt or pxAt at the same time.');
+            }
             $options['ex'] = $ex;
         }
         if ($px !== null) {
+            if ($ex !== null || $exAt !== null || $pxAt !== null) {
+                throw new LogicException('Cannot use px with ex, exAt or pxAt at the same time.');
+            }
             $options['px'] = $px;
         }
         if ($exAt !== null) {
+            if ($ex !== null || $px !== null || $pxAt !== null) {
+                throw new LogicException('Cannot use exAt with ex, px or pxAt at the same time.');
+            }
             $options['exat'] = $exAt->getTimestamp();
         }
         if ($pxAt !== null) {
+            if ($ex !== null || $px !== null || $exAt !== null) {
+                throw new LogicException('Cannot use pxAt with ex, px or exAt at the same time.');
+            }
             $float = $pxAt->format('U.u');
             $options['pxat'] = (int) ($float * 1000);
         }
