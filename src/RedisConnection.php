@@ -76,12 +76,12 @@ class RedisConnection
      * @template TConnectionConfig of ConnectionConfig
      * @param string $name,
      * @param Adapter<TConnectionConfig> $adapter
-     * @param EventManager $events
+     * @param EventManager|null $events
      */
     public function __construct(
         public readonly string $name,
         public readonly Adapter $adapter,
-        protected readonly EventManager $events,
+        protected readonly ?EventManager $events,
     )
     {
     }
@@ -92,7 +92,7 @@ class RedisConnection
     public function connect(): static
     {
         $this->adapter->connect();
-        $this->events->emit(new ConnectionEstablished($this));
+        $this->events?->emit(new ConnectionEstablished($this));
         return $this;
     }
 
@@ -132,7 +132,7 @@ class RedisConnection
         $then = hrtime(true);
         $result = $callback($this->adapter, $command, $args);
         $timeMs = (hrtime(true) - $then) * 1_000_000;
-        $this->events->emit(new CommandExecuted($this, $command, $args, $result, $timeMs));
+        $this->events?->emit(new CommandExecuted($this, $command, $args, $result, $timeMs));
         return $result;
     }
 

@@ -31,11 +31,11 @@ class RedisManager
     public readonly string $default;
 
     /**
-     * @param EventManager $events
+     * @param EventManager|null $events
      * @param RedisConfig $config
      */
     public function __construct(
-        protected readonly EventManager $events,
+        protected readonly ?EventManager $events,
         public readonly RedisConfig $config,
     )
     {
