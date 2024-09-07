@@ -81,7 +81,7 @@ class RedisConnection
     public function __construct(
         public readonly string $name,
         public readonly Adapter $adapter,
-        protected readonly ?EventManager $events,
+        protected readonly ?EventManager $events = null,
     )
     {
     }

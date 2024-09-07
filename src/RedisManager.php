@@ -31,12 +31,12 @@ class RedisManager
     public readonly string $default;
 
     /**
-     * @param EventManager|null $events
      * @param RedisConfig $config
+     * @param EventManager|null $events
      */
     public function __construct(
-        protected readonly ?EventManager $events,
         public readonly RedisConfig $config,
+        protected readonly ?EventManager $events = null,
     )
     {
         $this->default = $this->resolveDefaultConnectionName();
