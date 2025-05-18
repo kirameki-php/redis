@@ -267,6 +267,15 @@ interface Adapter
     public function lIndex(string $key, int $index): mixed;
 
     /**
+     * @link https://redis.io/docs/commands/llen
+     * @param string $key
+     * @return int
+     *  The length of the list. 0 if the list does not exist.
+     *  Will throw CommandException if key set but is not a list.
+     */
+    public function lLen(string $key): int;
+
+    /**
      * Each element is inserted to the head of the list, from the leftmost to the rightmost element.
      * Ex: `$client->lPush('mylist', 'a', 'b', 'c')` will create a list `["c", "b", "a"]`
      *

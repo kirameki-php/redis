@@ -518,6 +518,15 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
+    public function lLen(string $key): int
+    {
+        return $this->run(static fn(Redis $r) => $r->lLen($key));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function lPush(string $key, mixed ...$value): int
     {
         return $this->run(static fn(Redis $r) => $r->lPush($key, ...$value));

@@ -26,7 +26,6 @@ use function iterator_to_array;
  * LISTS ---------------------------------------------------------------------------------------------------------------
  * @method mixed  brPop(string[] $key, int $timeout)
  * @method mixed  brpoplpush(string $source, string $destination, int $timeout)
- * @method mixed  lLen($key)
  * @method mixed  lPop(string $key)
  * @method mixed  lPushx(string $key, $value)
  * @method mixed  lRange(string $key, int $start, int $end)
@@ -311,7 +310,7 @@ class RedisConnection
      */
     public function expireAt(string $key, DateTimeInterface $time, ?TtlMode $mode = null): bool
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->expireAt($key, $time, $mode),);
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->expireAt($key, $time, $mode));
     }
 
     /**
@@ -459,6 +458,18 @@ class RedisConnection
     public function lIndex(string $key, int $index): mixed
     {
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lIndex($key, $index));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/llen
+     * @param string $key
+     * @return int
+     * The length of the list. 0 if the list does not exist.
+     * Will throw CommandException if key set but is not a list.
+     */
+    public function lLen(string $key): int
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lLen($key));
     }
 
     /**

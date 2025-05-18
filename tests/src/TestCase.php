@@ -19,7 +19,7 @@ abstract class TestCase extends BaseTestCase
 
     protected function createManager(): RedisManager
     {
-        return $this->redis ??= new RedisManager(new EventManager(), new RedisConfig(default: 'main'));
+        return $this->redis ??= new RedisManager(new RedisConfig(default: 'main'), new EventManager());
     }
 
     public function createExtConnection(string $name, ?ExtensionConfig $config = null): RedisConnection

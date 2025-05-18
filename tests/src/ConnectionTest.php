@@ -751,6 +751,24 @@ final class ConnectionTest extends TestCase
         $conn->lIndex('l', 2);
     }
 
+    public function test_list_lLen(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->lPush('l', 'abc', 1));
+        $this->assertSame(3, $conn->rPush('l', 2));
+        $this->assertSame(3, $conn->lLen('l'));
+        $this->assertSame(0, $conn->lLen('x')); // no key found
+    }
+
+    public function test_list_lLen_wrong_type(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('m', 'hi');
+        $this->assertSame(0, $conn->lLen('m')); // key not a list
+    }
+
     public function test_list_lPush(): void
     {
         $conn = $this->createExtConnection('main');

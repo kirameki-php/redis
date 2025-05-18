@@ -15,11 +15,11 @@ final class RedisManagerTest extends TestCase
 {
     public function test__auto_detect_default(): void
     {
-        $manager = new RedisManager(new EventManager(), new RedisConfig(
+        $manager = new RedisManager(new RedisConfig(
             connections: [
                 'main' => new ExtensionConfig('redis'),
             ]
-        ));
+        ), new EventManager());
         $this->assertSame('main', $manager->default);
     }
 
@@ -27,12 +27,12 @@ final class RedisManagerTest extends TestCase
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('No default connection could be resolved.');
-        new RedisManager(new EventManager(), new RedisConfig(
+        new RedisManager(new RedisConfig(
             connections: [
                 'main' => new ExtensionConfig('redis'),
                 'alt' => new ExtensionConfig('redis'),
             ]
-        ));
+        ), new EventManager());
     }
 
     public function test_use__main(): void
