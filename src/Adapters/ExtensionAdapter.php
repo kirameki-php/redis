@@ -20,6 +20,7 @@ use Override;
 use Redis;
 use RedisException as PhpRedisException;
 use function array_filter;
+use function array_key_exists;
 use function array_map;
 use function array_sum;
 use function count;
@@ -135,7 +136,7 @@ class ExtensionAdapter implements Adapter
 
             if ($config->username !== null && $config->password !== null) {
                 $credentials = ['user' => $config->username, 'pass' => $config->password];
-                $client->auth(array_filter($credentials, fn($v) => $v !== null));
+                $client->auth(array_filter($credentials, fn(?string $v) => $v !== null));
             }
 
             if ($config->database !== null) {
@@ -500,7 +501,7 @@ class ExtensionAdapter implements Adapter
         /** @var array{ 0?: string, 1?: mixed } $result */
         $result = $this->run(static fn(Redis $r) => $r->blPop($keys, $timeout));
 
-        return (count($result) > 0)
+        return array_key_exists(0, $result) && array_key_exists(1, $result)
             ? [$result[0] => $result[1]]
             : null;
     }
@@ -605,7 +606,12 @@ class ExtensionAdapter implements Adapter
     #[Override]
     public function scriptExists(string ...$sha1): array
     {
-        return array_map(boolval(...), $this->run(static fn(Redis $r) => $r->script('exists', ...$sha1)));
+        $result = $this->run(static fn(Redis $r) => $r->script('exists', ...$sha1));
+        $exists = [];
+        foreach ($result as $value) {
+            $exists[] = boolval($value);
+        }
+        return $exists;
     }
 
     /**

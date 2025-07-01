@@ -17,6 +17,7 @@ use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use Kirameki\Redis\Options\XTrimMode;
 use function array_map;
+use function array_values;
 use function count;
 use function func_get_args as args;
 use function hrtime;
@@ -443,7 +444,8 @@ class RedisConnection
      */
     public function blPop(iterable $keys, int|float $timeout = 0): ?array
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->blPop(iterator_to_array($keys), $timeout));
+        $_keys = array_values(iterator_to_array($keys));
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->blPop($_keys, $timeout));
     }
 
     /**
@@ -582,8 +584,7 @@ class RedisConnection
      */
     public function scriptExists(string ...$sha1): array
     {
-        $result = $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptExists(...$sha1));
-        return array_map(boolval(...), $result);
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->scriptExists(...$sha1));
     }
 
     /**
@@ -782,7 +783,8 @@ class RedisConnection
      */
     public function xAck(string $key, string $group, iterable $ids): int
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xAck($key, $group, iterator_to_array($ids)));
+        $_ids = array_values(iterator_to_array($ids));
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xAck($key, $group, $_ids));
     }
 
     /**
@@ -796,7 +798,7 @@ class RedisConnection
      */
     public function xClaim(string $key, string $group, string $consumer, int $minIdleTime, iterable $ids): array
     {
-        $_ids = iterator_to_array($ids);
+        $_ids = array_values(iterator_to_array($ids));
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->xClaim($key, $group, $consumer, $minIdleTime, $_ids));
     }
 

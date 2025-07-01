@@ -5,11 +5,3 @@ parameters:
     excludePaths:
         - tests/*
     ignoreErrors:
-    -
-        message: "#^Parameter \\#4 \\$count of method Redis\\:\\:xReadGroup\\(\\) expects int, int\\|null given\\.$#"
-        count: 1
-        path: src/Adapters/ExtensionAdapter.php
-    -
-        message: "#^Parameter \\#5 \\$block of method Redis\\:\\:xReadGroup\\(\\) expects int, int\\|null given\\.$#"
-        count: 1
-        path: src/Adapters/ExtensionAdapter.php

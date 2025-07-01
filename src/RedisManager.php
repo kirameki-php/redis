@@ -170,10 +170,11 @@ class RedisManager
 
     /**
      * @param string $name
-     * @return Closure(covariant ConnectionConfig): Adapter<ConnectionConfig>
+     * @return Closure(ConnectionConfig): Adapter<ConnectionConfig>
      */
     protected function getDefaultAdapterResolver(string $name): Closure
     {
+        // @phpstan-ignore return.type
         return match ($name) {
             'extension' => static fn(ExtensionConfig $config) => new ExtensionAdapter($config),
             default => throw new LogicException("Adapter: $name does not exist"),
