@@ -50,6 +50,7 @@ final class ConnectionTest extends TestCase
     {
         $this->expectException(CommandException::class);
         $this->expectExceptionMessage('read error on connection to redis:6379');
+        $conn = null;
         try {
             $retry = 0;
             retry_read_timeout:
@@ -65,7 +66,7 @@ final class ConnectionTest extends TestCase
             dump($e);
             throw $e;
         } finally {
-            $conn->disconnect();
+            $conn?->disconnect();
         }
     }
 
@@ -786,6 +787,47 @@ final class ConnectionTest extends TestCase
         $conn = $this->createExtConnection('main');
         $conn->set('l', 1);
         $conn->lPush('l', 2);
+    }
+
+    public function test_list_lRange(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(4, $conn->lPush('l', 1, 2, 3, 4));
+        $this->assertSame([4, 3, 2, 1], $conn->lRange('l', 0, -1)->all());
+        $this->assertSame([4, 3], $conn->lRange('l', 0, 1)->all());
+        $this->assertSame([3, 2, 1], $conn->lRange('l', -3, -1)->all());
+    }
+
+    public function test_list_lRange_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->lRange('l', 0, -1);
+    }
+
+    public function test_list_lTrim(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(4, $conn->lPush('l', 1, 2, 3, 4));
+        $conn->lTrim('l', 0, 4); // no change, range is size of list
+        $this->assertSame([4, 3, 2, 1], $conn->lRange('l', 0, -1)->all());
+        $conn->lTrim('l', 0, -1); // trim to last element
+        $this->assertSame([4, 3, 2, 1], $conn->lRange('l', 0, -1)->all());
+        $conn->lTrim('l', 1, 2); // trim to 2 elements
+        $this->assertSame([3, 2], $conn->lRange('l', 0, -1)->all());
+        $conn->lTrim('l', 10, 11); // trim to empty list
+        $this->assertSame([], $conn->lRange('l', 0, -1)->all());
+    }
+
+    public function test_list_lTrim_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->lTrim('l', 0, 10);
     }
 
     public function test_list_rPush(): void

@@ -28,10 +28,8 @@ use function iterator_to_array;
  * @method mixed  brpoplpush(string $source, string $destination, int $timeout)
  * @method mixed  lPop(string $key)
  * @method mixed  lPushx(string $key, $value)
- * @method mixed  lRange(string $key, int $start, int $end)
  * @method mixed  lRem(string $key, $value, int $count)
  * @method mixed  lSet(string $key, int $index, $value)
- * @method mixed  lTrim(string $key, int $start, int $end)
  * @method mixed  rPop(string $key)
  * @method mixed  rpoplpush(string $source, string $destination)
  * @method mixed  rPushx(string $key, $value)
@@ -484,6 +482,31 @@ class RedisConnection
     public function lPush(string $key, mixed ...$value): int
     {
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lPush($key, ...$value));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/lrange
+     * @param string $key
+     * @param int $start  Can be negative to designate elements starting at the tail of the list.
+     * @param int $end  Can be negative to designate elements starting at the tail of the list.
+     * @return Vec<mixed>  List of elements in the specified range as Vec.
+     */
+    public function lRange(string $key, int $start, int $end): Vec
+    {
+        $result = $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lRange($key, $start, $end));
+        return new Vec($result);
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/ltrim
+     * @param string $key
+     * @param int $start  Can be negative to designate elements starting at the tail of the list.
+     * @param int $end  Can be negative to designate elements starting at the tail of the list.
+     * @return void
+     */
+    public function lTrim(string $key, int $start, int $end): void
+    {
+        $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lTrim($key, $start, $end));
     }
 
     /**

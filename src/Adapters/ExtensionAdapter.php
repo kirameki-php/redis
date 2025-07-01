@@ -536,6 +536,24 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
+    public function lRange(string $key, int $start, int $end): array
+    {
+        return $this->run(static fn(Redis $r) => $r->lrange($key, $start, $end));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function lTrim(string $key, int $start, int $end): void
+    {
+        $this->run(static fn(Redis $r) => $r->ltrim($key, $start, $end));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function rPush(string $key, mixed ...$value): int
     {
         return $this->run(static fn(Redis $r) => $r->rPush($key, ...$value));

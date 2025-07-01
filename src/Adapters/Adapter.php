@@ -287,6 +287,24 @@ interface Adapter
     public function lPush(string $key, mixed ...$value): int;
 
     /**
+     * @link https://redis.io/docs/commands/lrange
+     * @param string $key
+     * @param int $start  Can be negative to designate elements starting at the tail of the list.
+     * @param int $end  Can be negative to designate elements starting at the tail of the list.
+     * @return list<mixed>  List of elements in the specified range.
+     */
+    public function lRange(string $key, int $start, int $end): array;
+
+    /**
+     * @link https://redis.io/docs/commands/ltrim
+     * @param string $key
+     * @param int $start  Can be negative to designate elements starting at the tail of the list.
+     * @param int $end  Can be negative to designate elements starting at the tail of the list.
+     * @return void
+     */
+    public function lTrim(string $key, int $start, int $end): void;
+
+    /**
      * Each element is inserted to the tail of the list, from the leftmost to the rightmost element.
      * Ex: `$client->rPush('mylist', 'a', 'b', 'c')` will create a list `["a", "b", "c"]`.
      *
