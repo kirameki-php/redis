@@ -293,6 +293,14 @@ interface Adapter
      */
     public function lPush(string $key, mixed ...$value): int;
 
+    /**
+     * @link https://redis.io/docs/commands/lpushx
+     * @param string $key
+     * @param mixed $value
+     * @return int  length of the list after the push operation.
+     * Returns `0` if the key does not exist.
+     */
+    public function lPushx(string $key, mixed $value): int;
 
     /**
      * @link https://redis.io/docs/commands/lrem
@@ -342,6 +350,15 @@ interface Adapter
      * @return int  length of the list after the push operation.
      */
     public function rPush(string $key, mixed ...$value): int;
+
+    /**
+     * @link https://redis.io/docs/commands/rpushx
+     * @param string $key
+     * @param mixed $value
+     * @return int  length of the list after the push operation.
+     * Returns `0` if the key does not exist.
+     */
+    public function rPushx(string $key, mixed $value): int;
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
 

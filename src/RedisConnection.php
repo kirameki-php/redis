@@ -26,11 +26,8 @@ use function iterator_to_array;
  * LISTS ---------------------------------------------------------------------------------------------------------------
  * @method mixed  brPop(string[] $key, int $timeout)
  * @method mixed  brpoplpush(string $source, string $destination, int $timeout)
- * @method mixed  lPushx(string $key, $value)
- * @method mixed  lRem(string $key, $value, int $count)
  * @method mixed  lSet(string $key, int $index, $value)
  * @method mixed  rpoplpush(string $source, string $destination)
- * @method mixed  rPushx(string $key, $value)
  *
  * SORTED SETS ---------------------------------------------------------------------------------------------------------
  * @method array bzPopMax(string|array $key, int $timeout) // A timeout of zero can be used to block indefinitely
@@ -494,6 +491,19 @@ class RedisConnection
     }
 
     /**
+     * @link https://redis.io/docs/commands/lpushx
+     * @param string $key
+     * @param mixed $value
+     * @return int
+     * length of the list after the push operation.
+     * Returns `0` if the key does not exist.
+     */
+    public function lPushx(string $key, mixed $value): int
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lPushx($key, $value));
+    }
+
+    /**
      * @link https://redis.io/docs/commands/lrange
      * @param string $key
      * @param int $start  Can be negative to designate elements starting at the tail of the list.
@@ -556,6 +566,19 @@ class RedisConnection
     public function rPush(string $key, mixed ...$value): int
     {
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->rPush($key, ...$value));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/rpushx
+     * @param string $key
+     * @param mixed $value
+     * @return int
+     * length of the list after the push operation.
+     * Returns `0` if the key does not exist.
+     */
+    public function rPushx(string $key, mixed $value): int
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->rPushx($key, $value));
     }
 
     # endregion LIST ---------------------------------------------------------------------------------------------------

@@ -807,6 +807,25 @@ final class ConnectionTest extends TestCase
         $conn->lPush('l', 2);
     }
 
+    public function test_list_lPushx(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->lPush('l', 'abc', 1));
+        $this->assertSame(3, $conn->lPushx('l', 2)); // push to existing list
+        $this->assertSame(0, $conn->lPushx('m', 2)); // no key found
+        $this->assertSame('abc', $conn->lIndex('l', 2));
+        $this->assertSame(Type::None, $conn->type('m'));
+    }
+
+    public function test_list_lPushx_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->lPushx('l', 2);
+    }
+
     public function test_list_lRange(): void
     {
         $conn = $this->createExtConnection('main');
@@ -909,6 +928,25 @@ final class ConnectionTest extends TestCase
         $conn = $this->createExtConnection('main');
         $conn->set('l', 1);
         $conn->rPush('l', 2);
+    }
+
+    public function test_list_rPushx(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->rPush('l', 'abc', 1));
+        $this->assertSame(3, $conn->rPushx('l', 2)); // push to existing list
+        $this->assertSame(0, $conn->rPushx('m', 2)); // no key found
+        $this->assertSame('abc', $conn->lIndex('l', 0));
+        $this->assertSame(Type::None, $conn->type('m'));
+    }
+
+    public function test_list_rPushx_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->rPushx('l', 2);
     }
 
     # endregion LIST ---------------------------------------------------------------------------------------------------
