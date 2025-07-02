@@ -570,13 +570,19 @@ class RedisConnection
     }
 
     /**
+     * Moves the last element of the source list to the head of the destination list.
+     * If the destination list does not exist, it will be created.
+     *
      * @link https://redis.io/docs/commands/rpoplpush
-     * @param string $source
-     * @param string $destination
+     * @param string $srcKey  Key of the source list.
+     * @param string $dstKey  Key of the destination list.
+     * @return mixed|false
+     * The value popped from the tail of the source list and pushed to the head of the destination list.
+     * Returns `false` if the source list does not exist.
      */
-    public function rPoplPush(string $source, string $destination): mixed
+    public function rPopLPush(string $srcKey, string $dstKey): mixed
     {
-        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->rPoplPush($source, $destination));
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->rPopLPush($srcKey, $dstKey));
     }
 
     /**

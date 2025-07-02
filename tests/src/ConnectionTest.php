@@ -952,6 +952,7 @@ final class ConnectionTest extends TestCase
         $this->assertSame(1, $conn->rPopLPush('l', 'm')); // move last element from l to m
         $this->assertSame([], $conn->lRange('l', 0, -1)->all()); // l is now empty
         $this->assertSame([1, 'abc'], $conn->lRange('m', 0, -1)->toArray()); // m has the last element
+        $this->assertFalse($conn->rPopLPush('x', 'm')); // no source list
     }
 
     public function test_list_rPopLPush_key_not_a_list(): void
