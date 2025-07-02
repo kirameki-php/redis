@@ -16,7 +16,6 @@ use Kirameki\Redis\Options\SetMode;
 use Kirameki\Redis\Options\TtlMode;
 use Kirameki\Redis\Options\Type;
 use Kirameki\Redis\Options\XTrimMode;
-use function array_map;
 use function array_values;
 use function count;
 use function func_get_args as args;
@@ -27,11 +26,9 @@ use function iterator_to_array;
  * LISTS ---------------------------------------------------------------------------------------------------------------
  * @method mixed  brPop(string[] $key, int $timeout)
  * @method mixed  brpoplpush(string $source, string $destination, int $timeout)
- * @method mixed  lPop(string $key)
  * @method mixed  lPushx(string $key, $value)
  * @method mixed  lRem(string $key, $value, int $count)
  * @method mixed  lSet(string $key, int $index, $value)
- * @method mixed  rPop(string $key)
  * @method mixed  rpoplpush(string $source, string $destination)
  * @method mixed  rPushx(string $key, $value)
  *
@@ -473,6 +470,16 @@ class RedisConnection
     }
 
     /**
+     * @link https://redis.io/docs/commands/lpop
+     * @param string $key
+     * @return mixed|false  The value popped from the head of the list or `false` if the list does not exist.
+     */
+    public function lPop(string $key): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lPop($key));
+    }
+
+    /**
      * Each element is inserted to the head of the list, from the leftmost to the rightmost element.
      * Ex: `$client->lPush('mylist', 'a', 'b', 'c')` will create a list `["c", "b", "a"]`
      *
@@ -509,6 +516,16 @@ class RedisConnection
     public function lTrim(string $key, int $start, int $end): void
     {
         $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lTrim($key, $start, $end));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/rpop
+     * @param string $key
+     * @return mixed|false  The value popped from the tail of the list or `false` if the list does not exist.
+     */
+    public function rPop(string $key): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->rPop($key));
     }
 
     /**

@@ -770,6 +770,24 @@ final class ConnectionTest extends TestCase
         $this->assertSame(0, $conn->lLen('m')); // key not a list
     }
 
+    public function test_list_lPop(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->lPush('l', 'abc', 1));
+        $this->assertSame(1, $conn->lPop('l'));
+        $this->assertSame('abc', $conn->lPop('l'));
+        $this->assertFalse($conn->lPop('l')); // no more elements
+    }
+
+    public function test_list_lPop_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->lPop('l');
+    }
+
     public function test_list_lPush(): void
     {
         $conn = $this->createExtConnection('main');
@@ -828,6 +846,24 @@ final class ConnectionTest extends TestCase
         $conn = $this->createExtConnection('main');
         $conn->set('l', 1);
         $conn->lTrim('l', 0, 10);
+    }
+
+    public function test_list_rPop(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->lPush('l', 'abc', 1));
+        $this->assertSame('abc', $conn->rPop('l'));
+        $this->assertSame(1, $conn->rPop('l'));
+        $this->assertFalse($conn->rPop('l')); // no more elements
+    }
+
+    public function test_list_rPop_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->rPop('l');
     }
 
     public function test_list_rPush(): void
@@ -1119,7 +1155,7 @@ final class ConnectionTest extends TestCase
         $conn = $this->createExtConnection('main');
         $conn->xAdd('stream', '*', ['a' => 1]);
         $conn->xAdd('stream', '*', ['b' => 2]);
-        $info = $conn->xInfoStream('stream', false, 1);
+        $conn->xInfoStream('stream', false, 1);
     }
 
     public function test_stream_xInfoStream__full(): void

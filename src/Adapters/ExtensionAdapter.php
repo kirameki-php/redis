@@ -528,6 +528,15 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
+    public function lPop(string $key): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->lPop($key));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function lPush(string $key, mixed ...$value): int
     {
         return $this->run(static fn(Redis $r) => $r->lPush($key, ...$value));
@@ -549,6 +558,15 @@ class ExtensionAdapter implements Adapter
     public function lTrim(string $key, int $start, int $end): void
     {
         $this->run(static fn(Redis $r) => $r->ltrim($key, $start, $end));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function rPop(string $key): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->rPop($key));
     }
 
     /**

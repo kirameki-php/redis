@@ -276,6 +276,13 @@ interface Adapter
     public function lLen(string $key): int;
 
     /**
+     * @link https://redis.io/docs/commands/lpop
+     * @param string $key
+     * @return mixed|false  The value at the head of the list or `false` if the list is empty or does not exist.
+     */
+    public function lPop(string $key): mixed;
+
+    /**
      * Each element is inserted to the head of the list, from the leftmost to the rightmost element.
      * Ex: `$client->lPush('mylist', 'a', 'b', 'c')` will create a list `["c", "b", "a"]`
      *
@@ -303,6 +310,13 @@ interface Adapter
      * @return void
      */
     public function lTrim(string $key, int $start, int $end): void;
+
+    /**
+     * @link https://redis.io/docs/commands/rpop
+     * @param string $key
+     * @return mixed|false  The value at the tail of the list or `false` if the list is empty or does not exist.
+     */
+    public function rPop(string $key): mixed;
 
     /**
      * Each element is inserted to the tail of the list, from the leftmost to the rightmost element.
