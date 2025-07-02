@@ -510,6 +510,31 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
+    public function brPop(array $keys, int|float $timeout = 0): ?array
+    {
+        $keys = iterator_to_array($keys);
+
+        /** @var array{ 0?: string, 1?: mixed } $result */
+        $result = $this->run(static fn(Redis $r) => $r->brPop($keys, $timeout));
+
+        return array_key_exists(0, $result) && array_key_exists(1, $result)
+            ? [$result[0] => $result[1]]
+            : null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
+    public function brPopLPush(string $srcKey, string $dstKey, int|float $timeout = 0): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->brpoplpush($srcKey, $dstKey, $timeout));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function lIndex(string $key, int $index): mixed
     {
         return $this->run(static fn(Redis $r) => $r->lIndex($key, $index));

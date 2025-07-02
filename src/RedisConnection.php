@@ -23,9 +23,6 @@ use function hrtime;
 use function iterator_to_array;
 
 /**
- * LISTS ---------------------------------------------------------------------------------------------------------------
- * @method mixed  brPop(string[] $key, int $timeout)
- * @method mixed  brpoplpush(string $source, string $destination, int $timeout)
  *
  * SORTED SETS ---------------------------------------------------------------------------------------------------------
  * @method array bzPopMax(string|array $key, int $timeout) // A timeout of zero can be used to block indefinitely
@@ -438,6 +435,31 @@ class RedisConnection
     {
         $_keys = array_values(iterator_to_array($keys));
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->blPop($_keys, $timeout));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/brpop
+     * @param iterable<string> $keys
+     * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
+     * @return array<string, mixed>|null  Returns null on timeout
+     */
+    public function brPop(iterable $keys, int|float $timeout = 0): ?array
+    {
+        $_keys = array_values(iterator_to_array($keys));
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->brPop($_keys, $timeout));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/brpoplpush
+     * @param string $source  Key of the source list.
+     * @param string $destination  Key of the destination list.
+     * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
+     * @return mixed|false  The value popped from the tail of the source list and pushed to the head of the destination list.
+     * Returns `false` if the source list does not exist or if the operation timed out.
+     */
+    public function brPopLPush(string $source, string $destination, int|float $timeout = 0): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->brPopLPush($source, $destination, $timeout));
     }
 
     /**

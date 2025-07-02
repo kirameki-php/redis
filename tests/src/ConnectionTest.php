@@ -733,6 +733,49 @@ final class ConnectionTest extends TestCase
         $conn->blPop(['l'], 0.01);
     }
 
+    public function test_list_brPop(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->lPush('l', 'abc', 1));
+        $this->assertSame(['l' => 'abc'], $conn->brPop(['l'], 100));
+        $this->assertSame(['l' => 1], $conn->brPop(['l'], 100));
+        $this->assertSame(null, $conn->brPop(['l'], 0.01));
+    }
+
+    public function test_list_brPop__iterable_type(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(1, $conn->lPush('l', 1));
+        $this->assertSame(['l' => 1], $conn->brPop(new Vec(['l']), 100));
+    }
+
+    public function test_list_brPop_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->brPop(['l'], 0.01);
+    }
+
+    public function test_list_brPopLPush(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->lPush('l', 'abc', 1));
+        $this->assertSame('abc', $conn->brPopLPush('l', 'm', 100));
+        $this->assertSame(1, $conn->brPopLPush('l', 'm', 100));
+        $this->assertFalse($conn->brPopLPush('l', 'm', 0.01));
+    }
+
+    public function test_list_brPopLPush_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->brPopLPush('l', 'm', 0.01);
+    }
+
     public function test_list_lIndex(): void
     {
         $conn = $this->createExtConnection('main');

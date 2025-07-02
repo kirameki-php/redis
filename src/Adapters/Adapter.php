@@ -258,6 +258,24 @@ interface Adapter
     public function blPop(array $keys, int|float $timeout = 0): ?array;
 
     /**
+     * @link https://redis.io/docs/commands/brpop
+     * @param list<string> $keys
+     * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
+     * @return array<string, mixed>|null  Returns null on timeout
+     */
+    public function brPop(array $keys, int|float $timeout = 0): ?array;
+
+    /**
+     * @link https://redis.io/docs/commands/blpoplpush
+     * @param string $srcKey  Key of the source list.
+     * @param string $dstKey  Key of the destination list.
+     * @param int|float $timeout  If no timeout is set, it will be set to 0 which is infinity.
+     * @return mixed|false  The value popped from the head of the source list and pushed to the head of the destination list.
+     * Returns `false` if the source list does not exist or on timeout.
+     */
+    public function brPopLPush(string $srcKey, string $dstKey, int|float $timeout = 0): mixed;
+
+    /**
      * @link https://redis.io/docs/commands/lindex
      * @param string $key
      * @param int $index  Zero based. Use negative indices to designate elements starting at the tail of the list.
