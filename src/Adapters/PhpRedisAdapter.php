@@ -7,7 +7,7 @@ use DateTimeInterface;
 use Exception;
 use Kirameki\Core\Exceptions\InvalidConfigException;
 use Kirameki\Core\Exceptions\LogicException;
-use Kirameki\Redis\Config\ExtensionConfig;
+use Kirameki\Redis\Config\PhpRedisConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Generator;
@@ -29,16 +29,16 @@ use function strlen;
 use function substr;
 
 /**
- * @implements Adapter<ExtensionConfig>
+ * @implements Adapter<PhpRedisConfig>
  */
 class PhpRedisAdapter implements Adapter
 {
     /**
-     * @param ExtensionConfig $config
+     * @param PhpRedisConfig $config
      * @param Redis|null $client
      */
     public function __construct(
-        protected ExtensionConfig $config,
+        protected PhpRedisConfig $config,
         protected ?Redis $client = null,
     )
     {

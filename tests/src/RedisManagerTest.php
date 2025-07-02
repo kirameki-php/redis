@@ -3,7 +3,7 @@
 namespace Tests\Kirameki\Redis;
 
 use Kirameki\Event\EventManager;
-use Kirameki\Redis\Config\ExtensionConfig;
+use Kirameki\Redis\Config\PhpRedisConfig;
 use Kirameki\Redis\Config\RedisConfig;
 use Kirameki\Redis\RedisConnection;
 use Kirameki\Redis\Exceptions\ConnectionException;
@@ -17,7 +17,7 @@ final class RedisManagerTest extends TestCase
     {
         $manager = new RedisManager(new RedisConfig(
             connections: [
-                'main' => new ExtensionConfig('redis'),
+                'main' => new PhpRedisConfig('redis'),
             ]
         ), new EventManager());
         $this->assertSame('main', $manager->default);
@@ -29,8 +29,8 @@ final class RedisManagerTest extends TestCase
         $this->expectExceptionMessage('No default connection could be resolved.');
         new RedisManager(new RedisConfig(
             connections: [
-                'main' => new ExtensionConfig('redis'),
-                'alt' => new ExtensionConfig('redis'),
+                'main' => new PhpRedisConfig('redis'),
+                'alt' => new PhpRedisConfig('redis'),
             ]
         ), new EventManager());
     }
@@ -47,7 +47,7 @@ final class RedisManagerTest extends TestCase
         $this->throwOnError();
         $this->expectException(ConnectionException::class);
         $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for ng failed:');
-        $this->createExtConnection('ng', new ExtensionConfig('ng'))->exists('a');
+        $this->createExtConnection('ng', new PhpRedisConfig('ng'))->exists('a');
     }
 
     public function test_use__connect_to_bad_host(): void

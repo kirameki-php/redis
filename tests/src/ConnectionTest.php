@@ -7,7 +7,7 @@ use Kirameki\Collections\Utils\Arr;
 use Kirameki\Collections\Vec;
 use Kirameki\Core\Exceptions\ErrorException;
 use Kirameki\Core\Exceptions\LogicException;
-use Kirameki\Redis\Config\ExtensionConfig;
+use Kirameki\Redis\Config\PhpRedisConfig;
 use Kirameki\Redis\Exceptions\CommandException;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Kirameki\Redis\Options\SetMode;
@@ -26,15 +26,15 @@ final class ConnectionTest extends TestCase
 {
     public function test_connection__with_persistence(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis', persistent: true));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis', persistent: true));
         $this->assertSame('hi', $conn->echo('hi'));
     }
 
     public function test_connection__on_different_db(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertSame(0, $conn->clientInfo()['db']);
-        $conn = $this->createExtConnection('alt', new ExtensionConfig('redis', database: 1));
+        $conn = $this->createExtConnection('alt', new PhpRedisConfig('redis', database: 1));
         $this->assertSame(1, $conn->clientInfo()['db']);
     }
 
@@ -42,7 +42,7 @@ final class ConnectionTest extends TestCase
     {
         $this->expectException(ConnectionException::class);
         $this->expectExceptionMessage('php_network_getaddresses: getaddrinfo for none failed:');
-        $conn = $this->createExtConnection('main', new ExtensionConfig('none'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('none'));
         $conn->echo('hi');
     }
 
@@ -54,7 +54,7 @@ final class ConnectionTest extends TestCase
         try {
             $retry = 0;
             retry_read_timeout:
-            $conn = $this->createExtConnection('main', new ExtensionConfig('redis', readTimeoutSeconds: 0.000001));
+            $conn = $this->createExtConnection('main', new PhpRedisConfig('redis', readTimeoutSeconds: 0.000001));
             $conn->echo('hi');
             if ($retry < 30) {
                 $retry++;
@@ -74,7 +74,7 @@ final class ConnectionTest extends TestCase
     {
         $conn = $this->createExtConnection('main');
         $conn->acl('setuser', 'test', 'on');
-        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 'test'));
+        $userConn = $this->createExtConnection('user', new PhpRedisConfig('redis', username: 'test'));
         $this->assertTrue($userConn->ping());
         $this->assertSame(1, $conn->acl('deluser', 'test'));
     }
@@ -83,7 +83,7 @@ final class ConnectionTest extends TestCase
     {
         $conn = $this->createExtConnection('main');
         $conn->acl('setuser', 't2', 'on', '>hihi', 'allcommands');
-        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 't2', password: 'hihi'));
+        $userConn = $this->createExtConnection('user', new PhpRedisConfig('redis', username: 't2', password: 'hihi'));
         $this->assertTrue($userConn->ping());
     }
 
@@ -93,7 +93,7 @@ final class ConnectionTest extends TestCase
         $this->expectExceptionMessage('WRONGPASS invalid username-password pair or user is disabled.');
         $conn = $this->createExtConnection('main');
         $conn->acl('setuser', 't2', 'on', '>hihi', 'allcommands');
-        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 't2', password: ''));
+        $userConn = $this->createExtConnection('user', new PhpRedisConfig('redis', username: 't2', password: ''));
         $userConn->ping();
     }
 
@@ -488,7 +488,7 @@ final class ConnectionTest extends TestCase
         // filtered with wild card
         $this->assertSame(['a1', 'a2', 'a4'], $conn->scan('a*')->sortAsc()->toArray());
 
-        $connAlt = $this->createExtConnection('alt', new ExtensionConfig('redis', prefix: 'alt:'));
+        $connAlt = $this->createExtConnection('alt', new PhpRedisConfig('redis', prefix: 'alt:'));
 
         // filtered with prefix
         $connAlt->mSet(['a5' => 5]);
@@ -518,7 +518,7 @@ final class ConnectionTest extends TestCase
 
     public function test_generic_set_no_serialize(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis', serializer: Redis::SERIALIZER_NONE));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis', serializer: Redis::SERIALIZER_NONE));
         $patterns = [
             ['null', null, ''],
             ['int', 1, '1'],
@@ -535,7 +535,7 @@ final class ConnectionTest extends TestCase
 
     public function test_generic_set_nx(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertTrue($conn->set('t', 1, SetMode::Nx));
         $this->assertSame(1, $conn->get('t'));
         $this->assertFalse($conn->set('t', 2, SetMode::Nx));
@@ -544,7 +544,7 @@ final class ConnectionTest extends TestCase
 
     public function test_generic_set_xx(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertFalse($conn->set('t', 1, SetMode::Xx));
         $this->assertFalse($conn->get('t'));
         $this->assertTrue($conn->set('t', 1));
@@ -555,14 +555,14 @@ final class ConnectionTest extends TestCase
 
     public function test_generic_set_ex(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertTrue($conn->set('t', 1, ex: 3));
         $this->assertLessThanOrEqual(3, $conn->ttl('t'));
     }
 
     public function test_generic_set_exAt(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $secondsAhead = new DateTimeImmutable('+3 seconds');
         $this->assertTrue($conn->set('t2', 1, exAt: $secondsAhead));
         $this->assertLessThanOrEqual(3, $conn->ttl('t1'));
@@ -571,14 +571,14 @@ final class ConnectionTest extends TestCase
 
     public function test_generic_set_px(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertTrue($conn->set('t', 1, px: 500));
         $this->assertLessThanOrEqual(500, $conn->pTtl('t'));
     }
 
     public function test_generic_set_pxAt(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertTrue($conn->set('t', 1, pxAt: new DateTimeImmutable('+2 seconds')));
         $this->assertLessThanOrEqual(2000, $conn->pTtl('t'));
     }
@@ -588,7 +588,7 @@ final class ConnectionTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Cannot use ex with px, exAt or pxAt at the same time.');
 
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $conn->set('t', 1, ex: 10, exAt: new DateTimeImmutable('+10 seconds'));
     }
 
@@ -597,7 +597,7 @@ final class ConnectionTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Cannot use ex with px, exAt or pxAt at the same time.');
 
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $conn->set('t', 1, ex: 10, px: 500);
     }
 
@@ -606,7 +606,7 @@ final class ConnectionTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Cannot use ex with px, exAt or pxAt at the same time.');
 
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $conn->set('t', 1, ex: 10, pxAt: new DateTimeImmutable('+10 seconds'));
     }
 
@@ -615,7 +615,7 @@ final class ConnectionTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Cannot use px with ex, exAt or pxAt at the same time.');
 
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $conn->set('t', 1, exAt: new DateTimeImmutable('+10 seconds'), px: 10);
     }
 
@@ -624,7 +624,7 @@ final class ConnectionTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Cannot use pxAt with ex, exAt or px at the same time.');
 
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $time = new DateTimeImmutable('+10 seconds');
         $conn->set('t', 1, exAt: $time, pxAt: $time);
     }
@@ -634,13 +634,13 @@ final class ConnectionTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Cannot use px with ex, exAt or pxAt at the same time.');
 
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $conn->set('t', 1, px: 10, pxAt: new DateTimeImmutable('+10 seconds'));
     }
 
     public function test_generic_set_keepTtl(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertTrue($conn->set('t1', 1, ex: 300));
         $this->assertTrue($conn->set('t1', 2, keepTtl: true));
         $this->assertSame(2, $conn->get('t1'));
@@ -654,7 +654,7 @@ final class ConnectionTest extends TestCase
 
     public function test_generic_set_get(): void
     {
-        $conn = $this->createExtConnection('main', new ExtensionConfig('redis'));
+        $conn = $this->createExtConnection('main', new PhpRedisConfig('redis'));
         $this->assertFalse($conn->set('t', 1, get: true));
         $this->assertSame(1, $conn->set('t', 2, get: true));
         $this->assertSame(2, $conn->set('t', 3, SetMode::Nx, get: true));
@@ -1241,7 +1241,7 @@ final class ConnectionTest extends TestCase
     {
         $conn = $this->createExtConnection('main');
         $conn->acl('setuser', 'acl', 'on', '>hi', 'allcommands');
-        $userConn = $this->createExtConnection('user', new ExtensionConfig('redis', username: 'acl', password: 'hi'));
+        $userConn = $this->createExtConnection('user', new PhpRedisConfig('redis', username: 'acl', password: 'hi'));
         $this->assertTrue($userConn->ping());
     }
 

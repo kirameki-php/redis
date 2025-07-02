@@ -4,7 +4,7 @@ namespace Tests\Kirameki\Redis\Adapters;
 
 use Kirameki\Core\Exceptions\InvalidConfigException;
 use Kirameki\Redis\Adapters\PhpRedisAdapter;
-use Kirameki\Redis\Config\ExtensionConfig;
+use Kirameki\Redis\Config\PhpRedisConfig;
 use Kirameki\Redis\Exceptions\ConnectionException;
 use Tests\Kirameki\Redis\TestCase;
 
@@ -14,7 +14,7 @@ final class PhpRedisAdapterTest extends TestCase
     {
         $this->expectException(InvalidConfigException::class);
         $this->expectExceptionMessage('Either host or socket must be provided.');
-        $config = new ExtensionConfig(host: null, socket: null);
+        $config = new PhpRedisConfig(host: null, socket: null);
         $adapter = new PhpRedisAdapter($config);
         $adapter->connect();
     }
@@ -23,7 +23,7 @@ final class PhpRedisAdapterTest extends TestCase
     {
         $this->expectException(InvalidConfigException::class);
         $this->expectExceptionMessage('Host and socket cannot be used together.');
-        $config = new ExtensionConfig(host: 'redis', socket: '/run/redis.sock');
+        $config = new PhpRedisConfig(host: 'redis', socket: '/run/redis.sock');
         $adapter = new PhpRedisAdapter($config);
         $adapter->connect();
     }
@@ -32,14 +32,14 @@ final class PhpRedisAdapterTest extends TestCase
     {
         $this->expectException(ConnectionException::class);
         $this->expectExceptionMessage('No such file or directory');
-        $config = new ExtensionConfig(socket: '/run/redis.sock');
+        $config = new PhpRedisConfig(socket: '/run/redis.sock');
         $adapter = new PhpRedisAdapter($config);
         $adapter->connect();
     }
 
     public function test_rawCommand(): void
     {
-        $adapter = new PhpRedisAdapter(new ExtensionConfig('redis'));
+        $adapter = new PhpRedisAdapter(new PhpRedisConfig('redis'));
         $adapter->connect();
         $result = $adapter->rawCommand('PING', []);
         $this->assertEquals('PONG', $result);
