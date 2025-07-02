@@ -26,7 +26,6 @@ use function iterator_to_array;
  * LISTS ---------------------------------------------------------------------------------------------------------------
  * @method mixed  brPop(string[] $key, int $timeout)
  * @method mixed  brpoplpush(string $source, string $destination, int $timeout)
- * @method mixed  rpoplpush(string $source, string $destination)
  *
  * SORTED SETS ---------------------------------------------------------------------------------------------------------
  * @method array bzPopMax(string|array $key, int $timeout) // A timeout of zero can be used to block indefinitely
@@ -568,6 +567,16 @@ class RedisConnection
     public function rPop(string $key): mixed
     {
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->rPop($key));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/rpoplpush
+     * @param string $source
+     * @param string $destination
+     */
+    public function rPoplPush(string $source, string $destination): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->rPoplPush($source, $destination));
     }
 
     /**

@@ -351,6 +351,16 @@ interface Adapter
     public function rPop(string $key): mixed;
 
     /**
+     * @link https://redis.io/docs/commands/rpoplpush
+     * @param string $srcKey  The source key to pop from.
+     * @param string $dstKey  The destination key to push to.
+     * @return mixed|false
+     * The value at the tail of the source list after popping it.
+     * `false` if the source list is empty or does not exist.
+     */
+    public function rPopLPush(string $srcKey, string $dstKey): mixed;
+
+    /**
      * Each element is inserted to the tail of the list, from the leftmost to the rightmost element.
      * Ex: `$client->rPush('mylist', 'a', 'b', 'c')` will create a list `["a", "b", "c"]`.
      *

@@ -939,6 +939,30 @@ final class ConnectionTest extends TestCase
         $conn->rPop('l');
     }
 
+    public function test_list_rPopLPush(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(2, $conn->lPush('l', 'abc', 1));
+        $this->assertSame('abc', $conn->rPopLPush('l', 'm')); // to non-existing list
+        $this->assertSame(1, $conn->lIndex('l', 0));
+        $this->assertSame(1, $conn->lLen('l'));
+        $this->assertSame('abc', $conn->lIndex('m', 0));
+        $this->assertSame(1, $conn->lLen('m'));
+
+        $this->assertSame(1, $conn->rPopLPush('l', 'm')); // move last element from l to m
+        $this->assertSame([], $conn->lRange('l', 0, -1)->all()); // l is now empty
+        $this->assertSame([1, 'abc'], $conn->lRange('m', 0, -1)->toArray()); // m has the last element
+    }
+
+    public function test_list_rPopLPush_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->rPopLPush('l', 'm');
+    }
+
     public function test_list_rPush(): void
     {
         $conn = $this->createExtConnection('main');

@@ -600,6 +600,15 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
+    public function rPopLPush(string $srcKey, string $dstKey): mixed
+    {
+        return $this->run(static fn(Redis $r) => $r->rPopLPush($srcKey, $dstKey));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function rPush(string $key, mixed ...$value): int
     {
         return $this->run(static fn(Redis $r) => $r->rPush($key, ...$value));
