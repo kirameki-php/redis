@@ -52,7 +52,6 @@ use function iterator_to_array;
  * STRING --------------------------------------------------------------------------------------------------------------
  * UNSUPPORTED COMMANDS
  * - APPEND: does not work well with serialization
- * - BLPOP: waiting for PhpRedis to implement it
  * - BLMPOP: waiting for PhpRedis to implement it
  * - TIME: doesn't work when using cluster of servers
  * - MOVE: not supported in cluster mode
