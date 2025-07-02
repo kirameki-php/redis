@@ -325,6 +325,16 @@ interface Adapter
     public function lRange(string $key, int $start, int $end): array;
 
     /**
+     * @link https://redis.io/docs/commands/lset
+     * @param string $key
+     * @param int $index  Zero based. Use negative indices to designate elements starting at the tail of the list.
+     * @param mixed $value  The value to set at the specified index.
+     * @return bool
+     * `true` if the value was set successfully, `false` if the index is out of range or if the key is not a list.
+     */
+    public function lSet(string $key, int $index, mixed $value): bool;
+
+    /**
      * @link https://redis.io/docs/commands/ltrim
      * @param string $key
      * @param int $start  Can be negative to designate elements starting at the tail of the list.

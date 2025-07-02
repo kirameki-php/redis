@@ -26,7 +26,6 @@ use function iterator_to_array;
  * LISTS ---------------------------------------------------------------------------------------------------------------
  * @method mixed  brPop(string[] $key, int $timeout)
  * @method mixed  brpoplpush(string $source, string $destination, int $timeout)
- * @method mixed  lSet(string $key, int $index, $value)
  * @method mixed  rpoplpush(string $source, string $destination)
  *
  * SORTED SETS ---------------------------------------------------------------------------------------------------------
@@ -530,6 +529,23 @@ class RedisConnection
     public function lRem(string $key, mixed $value, int $count = 0): mixed
     {
         return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lRem($key, $value, $count));
+    }
+
+    /**
+     * @link https://redis.io/docs/commands/lset
+     * @param string $key
+     * @param int $index  Zero based. Use negative indices to designate elements starting at the tail of the list.
+     * @param mixed $value
+     * @return bool
+     * Returns `true` if the operation was successful.
+     * Returns `false` if the index does not exist or is not a list.
+     * @throws CommandException  if key does not exist.
+     * @throws CommandException  if key set but is not a list.
+     * @throws CommandException  if index is out of bounds.
+     */
+    public function lSet(string $key, int $index, mixed $value): bool
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lSet($key, $index, $value));
     }
 
     /**

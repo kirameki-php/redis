@@ -573,6 +573,15 @@ class ExtensionAdapter implements Adapter
      * @inheritDoc
      */
     #[Override]
+    public function lSet(string $key, int $index, mixed $value): bool
+    {
+        return $this->run(static fn(Redis $r) => $r->lSet($key, $index, $value));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    #[Override]
     public function lTrim(string $key, int $start, int $end): void
     {
         $this->run(static fn(Redis $r) => $r->ltrim($key, $start, $end));

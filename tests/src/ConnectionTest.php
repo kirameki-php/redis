@@ -893,6 +893,34 @@ final class ConnectionTest extends TestCase
         $conn->lTrim('l', 0, 10);
     }
 
+    public function test_list_lSet(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(4, $conn->lPush('l', 1, 2, 3, 4));
+        $conn->lSet('l', 0, 'a'); // set first element to 'a'
+        $this->assertSame(['a', 3, 2, 1], $conn->lRange('l', 0, -1)->all());
+        $conn->lSet('l', -1, 'b'); // set last element to 'b'
+        $this->assertSame(['a', 3, 2, 'b'], $conn->lRange('l', 0, -1)->all());
+    }
+
+    public function test_list_lSet_index_out_of_range(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('ERR index out of range');
+        $conn = $this->createExtConnection('main');
+        $conn->lPush('l', 1);
+        $conn->lSet('l', 1, 'a'); // index out of range
+    }
+
+    public function test_list_lSet_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->lSet('l', 0, 'a');
+    }
+
     public function test_list_rPop(): void
     {
         $conn = $this->createExtConnection('main');
