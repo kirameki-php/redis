@@ -825,6 +825,32 @@ final class ConnectionTest extends TestCase
         $conn->lRange('l', 0, -1);
     }
 
+    public function test_list_lRem(): void
+    {
+        $conn = $this->createExtConnection('main');
+        $this->assertSame(4, $conn->lPush('l', 1, 2, 3, 4));
+        $this->assertSame(1, $conn->lRem('l', 2, 1)); // remove one occurrence of 2
+        $this->assertSame([4, 3, 1], $conn->lRange('l', 0, -1)->all());
+        $this->assertSame(0, $conn->lRem('l', 5, 1)); // no occurrence of 5
+        $this->assertSame(1, $conn->lRem('l', 1, -1)); // remove all occurrences of 1
+        $this->assertSame([4, 3], $conn->lRange('l', 0, -1)->all());
+
+        $this->assertSame(4, $conn->lPush('l2', 4, 4, 4, 4));
+        $this->assertSame(4, $conn->lRem('l2', 4, 0)); // remove all occurrences of 4 (none left)
+
+        $this->assertSame(4, $conn->lPush('l2', 4, 4, 4, 4));
+        $this->assertSame(4, $conn->lRem('l2', 4)); // remove all occurrences of 4 (none left)
+    }
+
+    public function test_list_lRem_key_not_a_list(): void
+    {
+        $this->expectException(CommandException::class);
+        $this->expectExceptionMessage('WRONGTYPE Operation against a key holding the wrong kind of value');
+        $conn = $this->createExtConnection('main');
+        $conn->set('l', 1);
+        $conn->lRem('l', 1, 1);
+    }
+
     public function test_list_lTrim(): void
     {
         $conn = $this->createExtConnection('main');

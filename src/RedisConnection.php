@@ -507,6 +507,22 @@ class RedisConnection
     }
 
     /**
+     * @link https://redis.io/docs/commands/lrem
+     * @param string $key
+     * @param mixed $value
+     * @param int $count
+     * The number of occurrences to remove.
+     * If `0`, all occurrences will be removed.
+     * If positive, it will remove from the head of the list to the tail.
+     * If negative, it will remove from the tail of the list to the head.
+     * @return mixed  The number of elements removed from the list.
+     */
+    public function lRem(string $key, mixed $value, int $count = 0): mixed
+    {
+        return $this->run(__FUNCTION__, args(), static fn(Adapter $a) => $a->lRem($key, $value, $count));
+    }
+
+    /**
      * @link https://redis.io/docs/commands/ltrim
      * @param string $key
      * @param int $start  Can be negative to designate elements starting at the tail of the list.

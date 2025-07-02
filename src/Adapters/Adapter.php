@@ -293,6 +293,20 @@ interface Adapter
      */
     public function lPush(string $key, mixed ...$value): int;
 
+
+    /**
+     * @link https://redis.io/docs/commands/lrem
+     * @param string $key
+     * @param mixed $value  The value to remove from the list.
+     * @param int $count
+     * The number of occurrences to remove.
+     * If positive, it will remove from the head of the list.
+     * If negative, it will remove from the tail of the list.
+     * If `0`, all occurrences will be removed.
+     * @return int  The number of elements removed from the list.
+     */
+    public function lRem(string $key, mixed $value, int $count): int;
+
     /**
      * @link https://redis.io/docs/commands/lrange
      * @param string $key
