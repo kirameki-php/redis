@@ -7,7 +7,7 @@ use Kirameki\Collections\Map;
 use Kirameki\Core\Exceptions\LogicException;
 use Kirameki\Event\EventManager;
 use Kirameki\Redis\Adapters\Adapter;
-use Kirameki\Redis\Adapters\ExtensionAdapter;
+use Kirameki\Redis\Adapters\PhpRedisAdapter;
 use Kirameki\Redis\Config\ConnectionConfig;
 use Kirameki\Redis\Config\ExtensionConfig;
 use Kirameki\Redis\Config\RedisConfig;
@@ -176,7 +176,7 @@ class RedisManager
     {
         // @phpstan-ignore return.type
         return match ($name) {
-            'extension' => static fn(ExtensionConfig $config) => new ExtensionAdapter($config),
+            'extension' => static fn(ExtensionConfig $config) => new PhpRedisAdapter($config),
             default => throw new LogicException("Adapter: $name does not exist"),
         };
     }

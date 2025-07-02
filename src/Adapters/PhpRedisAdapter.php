@@ -31,7 +31,7 @@ use function substr;
 /**
  * @implements Adapter<ExtensionConfig>
  */
-class ExtensionAdapter implements Adapter
+class PhpRedisAdapter implements Adapter
 {
     /**
      * @param ExtensionConfig $config
